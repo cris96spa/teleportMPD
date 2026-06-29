@@ -248,7 +248,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             col: the column number.
 
         Returns:
-            The state number corresponding to ``(row, col)``.
+            The state number corresponding to `(row, col)`.
         """
         return row * self.ncol + col
 
@@ -261,7 +261,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             action: the action to take.
 
         Returns:
-            The new ``(row, col)`` position after applying the action.
+            The new `(row, col)` position after applying the action.
         """
         if action == LEFT:
             col = max(col - 1, 0)
@@ -343,7 +343,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             action: the action to take.
 
         Returns:
-            A tuple ``(s_prime, r, terminated, truncated, info)`` with the next
+            A tuple `(s_prime, r, terminated, truncated, info)` with the next
             state, reward, termination flag, truncation flag, and an info
             dictionary holding the transition probability.
         """
@@ -371,7 +371,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             options: additional options to pass to the environment.
 
         Returns:
-            A tuple ``(state, info)`` with the initial state and an info
+            A tuple `(state, info)` with the initial state and an info
             dictionary holding the transition probability.
         """
         super().reset(seed=seed, options=options)
@@ -412,7 +412,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             state: the state to check.
 
         Returns:
-            ``True`` if the state is terminal, ``False`` otherwise.
+            `True` if the state is terminal, `False` otherwise.
 
         Raises:
             ValueError: if the state is outside the valid state range.
