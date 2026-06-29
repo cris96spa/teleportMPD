@@ -12,6 +12,7 @@ from teleport_mdp.callbacks import MlflowCallback, ProgressCallback
 from teleport_mdp.enums import Algorithm, Curriculum
 from teleport_mdp.environments.factory import make_vec_env
 from teleport_mdp.models import ExperimentConfig
+from teleport_mdp.utils.device import get_torch_device
 from utils.configs import MlflowLoggerConfig
 from utils.experiment_logger import MlflowLogger
 
@@ -149,7 +150,7 @@ class Trainer:
             gamma=cfg.gamma,
             policy_kwargs=ppo.policy_kwargs,
             seed=seed,
-            device="cpu",
+            device=get_torch_device(),
             verbose=0,
         )
 
