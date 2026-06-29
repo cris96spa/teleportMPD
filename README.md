@@ -1,4 +1,4 @@
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue?style=flat-square&logo=github)](https://cris96spa.github.io/teleport-mdp/)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue?style=flat-square&logo=github)](https://cris96spa.github.io/teleportMPD/)
 
 # TMDP: Teleport Markov Decision Process
 
