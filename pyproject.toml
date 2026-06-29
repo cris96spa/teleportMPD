@@ -123,5 +123,6 @@ ignore = [
 ]
 
 [tool.template]
-template_commit = "36661f740d4691161edbcf31ba7c05176fba3f67"
+template_commit = "bb9485eaefb7c264e265ace293024547a3404695"
 template_branch = "main"
+
