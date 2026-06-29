@@ -285,5 +285,5 @@ pip-selfcheck.json
 .pytest_cache
 .uv_cache
 
-# This should be removed when the template is actually being used
-uv.lock
+# Visual Studio Code configuration
+.vscode

@@ -13,18 +13,23 @@ repos:
       - id: check-symlinks
       - id: check-toml
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.11
+  - repo: local
     hooks:
-      - id: ruff-check
-        name: lint ruff
+      - id: lint-notebooks
+        name: clear ipynb output
+        entry: jupyter nbconvert --clear-output --inplace
+        language: system
+        require_serial: true
+        files: '\.ipynb$'
+      - id: lint
+        name: Lint Ruff
         entry: ruff check
         language: system
         require_serial: true
         types_or: [python]
         exclude: "docs"
-      - id: ruff-format
-        name: format ruff
+      - id: format
+        name: Format Ruff
         entry: ruff format
         language: system
         require_serial: true

@@ -1,7 +1,9 @@
 import argparse
 import sys
-from python_repo_template.func import random_sum
+
 import loguru
+
+from teleport_mdp.func import random_sum
 
 if __name__ == "__main__":
     logger = loguru.logger

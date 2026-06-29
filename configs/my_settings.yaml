@@ -1,0 +1,6 @@
+sub_setting1:
+  name: "Sub Setting 1"
+  value: 42
+sub_setting2:
+  description: "This is a sub setting 2"
+  enabled: true
