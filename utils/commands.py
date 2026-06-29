@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 def command(function: Callable) -> Callable:
     """Decorator that turns a function into a CLI command.
 
-    The decorated function must have at least one parameter (after ``self``,
+    The decorated function must have at least one parameter (after `self`,
     if it is a method) whose type annotation is a config class with a
-    ``from_yaml`` class method.  At runtime the decorator parses
-    ``--config <path>`` from the CLI, loads the YAML into the annotated
+    `from_yaml` class method.  At runtime the decorator parses
+    `--config <path>` from the CLI, loads the YAML into the annotated
     config class, and calls the original function with it.
 
     Args:
@@ -28,7 +28,7 @@ def command(function: Callable) -> Callable:
         Callable: The decorated function that can be called from the CLI.
 
     Raises:
-        MissingCommandParameterError: If the function has no parameters (after dropping ``self``).
+        MissingCommandParameterError: If the function has no parameters (after dropping `self`).
         MissingCommandParameterAnnotationError: If the first parameter has no type annotation.
     """
     signature = inspect.signature(function)

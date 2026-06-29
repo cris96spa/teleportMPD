@@ -1,5 +1,3 @@
-"""Torch device resolution honoring the ``TORCH_DEVICE`` environment variable."""
-
 import logging
 import os
 
@@ -11,7 +9,6 @@ logger = logging.getLogger(__name__)
 TORCH_DEVICE_ENV = "TORCH_DEVICE"
 
 #: Auto-selection preference order when no device is explicitly requested.
-#: macOS Metal (``mps``) is preferred, then CUDA, then CPU.
 _AUTO_PREFERENCE: tuple[str, ...] = ("mps", "cuda", "cpu")
 
 
@@ -19,10 +16,10 @@ def _is_available(backend: str) -> bool:
     """Return whether a torch device backend is usable on this machine.
 
     Args:
-        backend: The device backend name (``"cpu"``, ``"cuda"`` or ``"mps"``).
+        backend: The device backend name (`"cpu"`, `"cuda"` or `"mps"`).
 
     Returns:
-        ``True`` if the backend is available, ``False`` otherwise.
+        `True` if the backend is available, `False` otherwise.
     """
     if backend == "cpu":
         return True
@@ -38,16 +35,16 @@ def get_torch_device(preferred: str | None = None) -> torch.device:
 
     Resolution order:
 
-    1. The ``preferred`` argument, if given.
-    2. Otherwise the ``TORCH_DEVICE`` environment variable.
-    3. Otherwise auto-select following ``mps -> cuda -> cpu``.
+    1. The `preferred` argument, if given.
+    2. Otherwise the `TORCH_DEVICE` environment variable.
+    3. Otherwise auto-select following `mps -> cuda -> cpu`.
 
     A requested device whose backend is unavailable falls back to CPU with a
     warning, so callers always receive a usable device.
 
     Args:
-        preferred: Optional explicit device string (e.g. ``"mps"``, ``"cuda"``,
-            ``"cuda:0"`` or ``"cpu"``). Overrides the environment variable.
+        preferred: Optional explicit device string (e.g. `"mps"`, `"cuda"`,
+            `"cuda:0"` or `"cpu"`). Overrides the environment variable.
 
     Returns:
         The resolved :class:`torch.device`.

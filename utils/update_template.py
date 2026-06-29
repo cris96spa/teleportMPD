@@ -252,8 +252,8 @@ def ensure_no_previous_graft_commits_exist():
 def get_project_default_branch() -> str:
     """Determine the project's default branch.
 
-    Reads the branch that ``origin/HEAD`` points to, falling back to the
-    currently checked-out branch when ``origin/HEAD`` is not set.
+    Reads the branch that `origin/HEAD` points to, falling back to the
+    currently checked-out branch when `origin/HEAD` is not set.
 
     Returns:
         The name of the project's default branch.

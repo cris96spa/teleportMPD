@@ -13,11 +13,11 @@ class TMDP(Wrapper):
 
     A TMDP is a Markov Decision Process where the agent can teleport to a random
     state with a given probability controlled by the parameter
-    ``teleport_probability``. At each step, a coin is tossed:
+    `teleport_probability`. At each step, a coin is tossed:
 
-    - With probability ``teleport_probability``, the agent teleports to a random
+    - With probability `teleport_probability`, the agent teleports to a random
       state.
-    - With probability ``1 - teleport_probability``, the agent takes a step in
+    - With probability `1 - teleport_probability`, the agent takes a step in
       the environment.
 
     Args:
@@ -26,6 +26,8 @@ class TMDP(Wrapper):
             over the state space.
         teleport_probability: the probability of teleporting to a random state.
             Default is 0.0.
+        discount_tau: whether to scale the per-step env reward by `(1 - tau)`
+            on non-teleport steps (the effective-discount behaviour). Default is `True`.
     """
 
     def __init__(
@@ -33,6 +35,7 @@ class TMDP(Wrapper):
         env: TeleportEnv,
         teleport_prob_distribution: ndarray[Any, np.dtype[Any]],
         teleport_probability: float = 0.0,
+        discount_tau: bool = True,
     ) -> None:
         super().__init__(env)
         if not isinstance(env, TeleportEnv):
@@ -41,13 +44,29 @@ class TMDP(Wrapper):
         if not abs(sum(teleport_prob_distribution) - 1) <= STOCHASTICITY_THRESHOLD:
             raise ValueError("The teleport distribution must sum to 1.")
 
-        # Check teleport probability
-        if teleport_probability < 0.0 or teleport_probability > 1.0:
-            raise ValueError("The teleport probability must be in the range [0, 1].")
         self.teleport_prob_distribution = teleport_prob_distribution
-        self.teleport_probability = teleport_probability
+        self.discount_tau = discount_tau
         self.env: TeleportEnv = env
+        self.update_tau(teleport_probability)
         self.reset()
+
+    def update_tau(self, tau: float) -> None:
+        """Set the teleport rate tau at runtime.
+
+        Used by the teleport-rate curriculum (thesis Algorithms 2 & 3) to change
+        the teleport probability during training.
+
+        Args:
+            tau: the new teleport rate, in `[0, 1)`.
+
+        Raises:
+            ValueError: if `tau` is outside `[0, 1)`. A rate of exactly 1
+                would give a degenerate effective discount `gamma * (1 - tau)`
+                of 0 and is rejected.
+        """
+        if not 0.0 <= tau < 1.0:
+            raise ValueError(f"The teleport rate must be in the range [0, 1), got {tau}.")
+        self.teleport_probability = tau
 
     def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
         """Take a step in the environment.
@@ -55,20 +74,23 @@ class TMDP(Wrapper):
         The agent can either take a step in the environment or teleport to a
         random state:
 
-        - With probability ``teleport_probability``, the agent teleports to a
+        - With probability `teleport_probability`, the agent teleports to a
           random state.
-        - With probability ``1 - teleport_probability``, the agent takes a step
+        - With probability `1 - teleport_probability`, the agent takes a step
           in the environment.
 
         Args:
             action: the action to take.
 
         Returns:
-            A tuple ``(s_prime, r, terminated, truncated, info)`` with the next
+            A tuple `(s_prime, r, terminated, truncated, info)` with the next
             state, reward, termination flag, truncation flag, and an info
             dictionary containing a teleport flag.
         """
-        if self.env.np_random.random() <= self.teleport_probability:
+        # Inverse-CDF gating: with U ~ Uniform[0, 1), `U < tau` teleports with
+        # probability exactly tau, so tau == 0 is behaviourally identical to the
+        # base env (a `<=` here would teleport on the measure-zero draw U == 0).
+        if self.env.np_random.random() < self.teleport_probability:
             # Teleport branch
             s_prime: int = self.env.teleport(self.teleport_prob_distribution)
             r = 0.0
@@ -80,7 +102,9 @@ class TMDP(Wrapper):
             }
         else:
             s_prime, r, terminated, truncated, info = self.env.step(action)
-            r = float(r) * (1 - self.teleport_probability)
+            r = float(r)
+            if self.discount_tau:
+                r *= 1 - self.teleport_probability
             info["teleport"] = False
 
         if self.render_mode == "human":
@@ -97,10 +121,10 @@ class TMDP(Wrapper):
 
         Args:
             **kwargs: additional keyword arguments forwarded to the wrapped
-                environment's ``reset`` method.
+                environment's `reset` method.
 
         Returns:
-            A tuple ``(state, info)`` with the initial state of the environment
+            A tuple `(state, info)` with the initial state of the environment
             and an info dictionary.
         """
         return self.env.reset(**kwargs)
