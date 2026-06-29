@@ -445,6 +445,10 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         while True:
             s_prime = int(categorical_sample(teleport_distribution, self.np_random))
             if not self.is_terminal(s_prime):
+                # Move the agent: the env must continue from the teleported state,
+                # otherwise the next step() transitions from the stale `self.s`.
+                self.s = s_prime
+                self.lastaction = None
                 return s_prime
 
     # endregion
