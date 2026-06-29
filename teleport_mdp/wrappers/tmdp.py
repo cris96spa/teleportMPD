@@ -4,9 +4,8 @@ import numpy as np
 from gymnasium import Wrapper
 from numpy import ndarray
 
+from teleport_mdp.constants import STOCHASTICITY_THRESHOLD
 from teleport_mdp.environments.teleport_env import TeleportEnv
-
-STOCHASTICITY_THRESHOLD = 1e-7
 
 
 class TMDP(Wrapper):

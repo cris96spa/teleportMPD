@@ -3527,6 +3527,7 @@ dependencies = [
     { name = "polars" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pygame" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "stable-baselines3" },
@@ -3549,7 +3550,6 @@ dev = [
     { name = "pre-commit" },
     { name = "properdocs" },
     { name = "pydoclint", extra = ["flake8"] },
-    { name = "pygame" },
     { name = "python-semantic-release" },
     { name = "ruff" },
 ]
@@ -3573,6 +3573,7 @@ requires-dist = [
     { name = "polars", specifier = ">=1.4.0,<2.0.0" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
+    { name = "pygame", specifier = ">=2.6.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "stable-baselines3", specifier = ">=2.7,<3.0" },
@@ -3595,7 +3596,6 @@ dev = [
     { name = "pre-commit", specifier = ">=4.3.0,<5.0.0" },
     { name = "properdocs", specifier = ">=1.6.1,<2.0.0" },
     { name = "pydoclint", extras = ["flake8"], specifier = ">=0.7.3,<0.9.0" },
-    { name = "pygame", specifier = ">=2.6.1" },
     { name = "python-semantic-release", specifier = ">=9.21,<10.0.0" },
     { name = "ruff", specifier = ">=0.15.11,<0.16.0" },
 ]
