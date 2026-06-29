@@ -2,7 +2,6 @@ from typing import Any, cast
 
 import pytest
 
-from teleport_mdp.enums import TeleportDistribution
 from teleport_mdp.models import EnvConfig, ExperimentConfig
 from teleport_mdp.trainer import RunResult, Trainer
 from utils.configs import MlflowLoggerConfig
@@ -123,12 +122,9 @@ def test_reproducible():
     assert first[0].std_return == pytest.approx(second[0].std_return)
 
 
-def test_rejects_unported_curriculum():
-    """Teleport curriculum raises NotImplementedError until TeleportPPO lands."""
+def test_rejects_non_ppo_algorithm():
+    """Tabular algorithms have their own runners; the PPO runner rejects them."""
     _, factory = _stub_factory()
-    cfg = _smoke_config(
-        teleport={"tau_0": 0.5, "distribution": TeleportDistribution.UNIFORM_NONTERMINAL},
-        curriculum={"kind": "static"},
-    )
+    cfg = _smoke_config(algorithm={"kind": "q_learning"})
     with pytest.raises(NotImplementedError):
         Trainer(cfg, mlflow_config=_mlflow_config(), logger_factory=factory, progress=False).run()

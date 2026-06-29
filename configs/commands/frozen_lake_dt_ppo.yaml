@@ -28,7 +28,10 @@ teleport:
   distribution: uniform_nonterminal
   discount_tau: true
 
+# eps is the total per-update state-visit shift budget; with gamma=0.99 the policy
+# shift consumes gamma/(1-gamma)=99x its D_inf, so eps must be generous for tau to
+# anneal as the policy stabilises. eps_tau_max caps a single teleport-rate step.
 curriculum:
   kind: dynamic
-  eps: 0.1
+  eps: 1.0
   eps_tau_max: 0.05

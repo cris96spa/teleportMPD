@@ -2,17 +2,15 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
-from stable_baselines3 import PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import VecEnv
 
 from teleport_mdp.callbacks import MlflowCallback, ProgressCallback
-from teleport_mdp.enums import Algorithm, Curriculum
 from teleport_mdp.environments.factory import make_vec_env
 from teleport_mdp.models import ExperimentConfig
-from teleport_mdp.utils.device import get_torch_device
+from teleport_mdp.registries import build_agent
 from utils.configs import MlflowLoggerConfig
 from utils.experiment_logger import MlflowLogger
 
@@ -77,7 +75,7 @@ class Trainer:
         train_env = make_vec_env(self._cfg, n_envs=1, seed=seed)
         try:
             self._log_config(mlflow_logger)
-            agent = self._build_agent(train_env, seed)
+            agent = build_agent(self._cfg, train_env, seed)
             callbacks = self._build_callbacks(
                 mlflow_logger, seed=seed, run_idx=run_idx, n_runs=n_runs
             )
@@ -104,57 +102,7 @@ class Trainer:
             callbacks.append(ProgressCallback(desc=desc))
         return CallbackList(callbacks)
 
-    def _build_agent(self, env: VecEnv, seed: int) -> PPO:
-        """Build the SB3 PPO agent.
-
-        Args:
-            env: The vectorized training environment.
-            seed: RNG seed for the agent.
-
-        Returns:
-            The constructed PPO agent.
-
-        Raises:
-            NotImplementedError: For non-PPO algorithms or teleport curricula.
-        """
-        cfg = self._cfg
-        if cfg.algorithm.kind != Algorithm.PPO:
-            raise NotImplementedError(
-                f"The PPO runner does not handle algorithm '{cfg.algorithm.kind.value}'; "
-                "the tabular algorithms have their own runners (tasks 11/12)."
-            )
-        if cfg.curriculum.kind != Curriculum.NONE:
-            raise NotImplementedError(
-                f"Teleport curriculum '{cfg.curriculum.kind.value}' dispatches to TeleportPPO "
-                "(task 08), which is not yet available."
-            )
-        ppo = cfg.algorithm
-        return PPO(
-            "MlpPolicy",
-            env,
-            n_steps=ppo.n_steps,
-            batch_size=ppo.batch_size,
-            n_epochs=ppo.n_epochs,
-            gae_lambda=ppo.gae_lambda,
-            normalize_advantage=ppo.normalize_advantage,
-            learning_rate=ppo.learning_rate,
-            clip_range=ppo.clip_range,
-            clip_range_vf=ppo.clip_range_vf,
-            ent_coef=ppo.ent_coef,
-            vf_coef=ppo.vf_coef,
-            max_grad_norm=ppo.max_grad_norm,
-            target_kl=ppo.target_kl,
-            use_sde=ppo.use_sde,
-            sde_sample_freq=ppo.sde_sample_freq,
-            stats_window_size=ppo.stats_window_size,
-            gamma=cfg.gamma,
-            policy_kwargs=ppo.policy_kwargs,
-            seed=seed,
-            device=get_torch_device(),
-            verbose=0,
-        )
-
-    def _evaluate(self, model: PPO, seed: int) -> tuple[float, float]:
+    def _evaluate(self, model: BaseAlgorithm, seed: int) -> tuple[float, float]:
         """Evaluate policy on the real MDP (τ forced to 0)."""
         eval_cfg = self._cfg.model_copy(
             update={"teleport": self._cfg.teleport.model_copy(update={"tau_0": 0.0})}
