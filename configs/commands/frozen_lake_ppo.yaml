@@ -1,7 +1,7 @@
 # Vanilla PPO baseline on FrozenLake (no teleport curriculum).
 name: frozen_lake_ppo_vanilla
 gamma: 0.99
-total_timesteps: 100000
+total_timesteps: 200000
 seed: 42
 n_runs: 1
 

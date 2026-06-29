@@ -169,7 +169,7 @@ class EnvConfig(BaseModel):
     n_bins: int = Field(
         default=0,
         ge=0,
-        description="Manhattan reward-shaping bins; 0 disables shaping (see task 13).",
+        description="Manhattan reward-shaping bins; 0 disables shaping.",
     )
 
 
@@ -261,26 +261,73 @@ class CurriculumConfig(BaseModel):
 
 
 class PPOConfig(BaseModel):
-    """Stable-Baselines3 PPO hyperparameters (excluding `gamma`, held at experiment level)."""
+    """Stable-Baselines3 PPO hyperparameters (excluding ``gamma``, held at experiment level)."""
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal[Algorithm.PPO] = Field(
         default=Algorithm.PPO, description="Algorithm discriminator."
     )
+
+    # Rollout / minibatch geometry
     n_steps: int = Field(default=2048, gt=0, description="Rollout length per update.")
     batch_size: int = Field(default=64, gt=0, description="Minibatch size.")
     n_epochs: int = Field(default=10, gt=0, description="Optimization epochs per update.")
+
+    # Advantage estimation
     gae_lambda: float = Field(
         default=0.95, ge=0.0, le=1.0, description="GAE lambda trade-off factor."
     )
+    normalize_advantage: bool = Field(
+        default=True, description="Normalize advantages in each minibatch."
+    )
+
+    # Core hyperparameters
     learning_rate: float = Field(default=3e-4, gt=0.0, description="Optimizer learning rate.")
-    clip_range: float = Field(default=0.2, gt=0.0, description="PPO clip range.")
+    clip_range: float = Field(default=0.2, gt=0.0, description="PPO policy clip range.")
+    clip_range_vf: float | None = Field(
+        default=None, gt=0.0, description="Value-function clip range; None disables VF clipping."
+    )
+
+    # Loss coefficients
     ent_coef: float = Field(default=0.0, ge=0.0, description="Entropy bonus coefficient.")
     vf_coef: float = Field(default=0.5, ge=0.0, description="Value-function loss coefficient.")
+
+    # Optimization
+    max_grad_norm: float = Field(default=0.5, gt=0.0, description="Gradient clipping norm.")
+    target_kl: float | None = Field(
+        default=None, gt=0.0, description="KL threshold for early stopping; None disables."
+    )
+
+    # Generalized State-Dependent Exploration
+    use_sde: bool = Field(default=False, description="Use gSDE instead of action noise.")
+    sde_sample_freq: int = Field(
+        default=-1, description="Noise matrix resample frequency (-1 = only at rollout start)."
+    )
+
+    # Logging
+    stats_window_size: int = Field(
+        default=100, gt=0, description="Episode window size for rollout statistics."
+    )
+
+    # Policy network
     policy_kwargs: dict[str, Any] | None = Field(
         default=None, description="Extra keyword arguments forwarded to the SB3 policy."
     )
+
+    @model_validator(mode="after")
+    def _check_batch_size_with_normalization(self) -> Self:
+        """SB3 requires batch_size > 1 when normalize_advantage is enabled.
+
+        Returns:
+            The validated config instance.
+
+        Raises:
+            ValueError: If batch_size <= 1 and normalize_advantage is True.
+        """
+        if self.normalize_advantage and self.batch_size <= 1:
+            raise ValueError("batch_size must be > 1 when normalize_advantage is True.")
+        return self
 
 
 class QLearningConfig(BaseModel):

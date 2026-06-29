@@ -11,7 +11,7 @@ from teleport_mdp.models import (
     TeleportConfig,
 )
 
-EXPERIMENTS_DIR = Path("configs/experiments")
+EXPERIMENTS_DIR = Path("configs/commands")
 EXAMPLE_CONFIGS = [
     "frozen_lake_ppo.yaml",
     "frozen_lake_st_ppo.yaml",
