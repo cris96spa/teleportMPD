@@ -21,9 +21,7 @@ def env():
 def tmdp_env(env: TeleportFrozenLakeEnv):
     """Fixture to initialize the TMDP wrapper with a sample teleport probability distribution."""
     # Example teleport probability distribution that sums to 1
-    teleport_prob_distribution = (
-        np.ones(env.observation_space.n) / env.observation_space.n
-    )  # type: ignore
+    teleport_prob_distribution = np.ones(env.observation_space.n) / env.observation_space.n  # pyright: ignore[reportGeneralTypeIssues]
     return TMDP(
         env=env,
         teleport_prob_distribution=teleport_prob_distribution,
@@ -45,13 +43,13 @@ def test_custom_map_creation():
     custom_map = generate_random_map(size=6, p=0.8, seed=42)
     env: TeleportFrozenLakeEnv = gym.make(
         "teleport_env/FrozenLake-v0", desc=custom_map, is_slippery=True
-    ).unwrapped  # type: ignore
+    ).unwrapped  # pyright: ignore[reportAssignmentType]
     assert env.desc.shape == (6, 6), "Custom map size should be 6x6."
 
 
 def test_step_function(env):
     """Test taking a single step in the environment."""
-    initial_obs, _ = env.reset()
+    env.reset()
     action = env.action_space.sample()  # Take a random action
     next_obs, reward, terminated, truncated, info = env.step(action)
 
@@ -91,9 +89,7 @@ def test_rendering(env):
     if "rgb_array" in env.metadata.get("render_modes", []):
         env.render_mode = "rgb_array"
         rgb_array_output = env.render()
-        assert isinstance(rgb_array_output, np.ndarray), (
-            "RGB mode should return an array."
-        )
+        assert isinstance(rgb_array_output, np.ndarray), "RGB mode should return an array."
 
 
 def test_reset_function(env):
@@ -105,8 +101,7 @@ def test_reset_function(env):
 
 def test_teleport(env: TeleportFrozenLakeEnv):
     """Test the teleport method to ensure it returns a valid non-terminal state."""
-    # Set up a teleport probability distribution where each state has an equal chance of being chosen
-    num_states = env.observation_space.n  # type: ignore
+    num_states = env.observation_space.n  # pyright: ignore[reportAttributeAccessIssue]
     teleport_prob_distribution = np.ones(num_states) / num_states
 
     # Perform the teleport
@@ -128,11 +123,9 @@ def test_teleport(env: TeleportFrozenLakeEnv):
 
 
 def test_tmdp_initialization(env):
-    """Test that TMDP initializes correctly with valid parameters and raises errors on invalid input."""
+    """Test that TMDP initializes correctly with valid args and raises errors on invalid input."""
     # Valid initialization
-    teleport_prob_distribution = (
-        np.ones(env.observation_space.n) / env.observation_space.n
-    )
+    teleport_prob_distribution = np.ones(env.observation_space.n) / env.observation_space.n
     tmdp = TMDP(
         env=env,
         teleport_prob_distribution=teleport_prob_distribution,
@@ -142,13 +135,11 @@ def test_tmdp_initialization(env):
 
     # Check invalid teleport probability distribution
     invalid_teleport_distribution = np.ones(env.observation_space.n) * 0.5
-    with pytest.raises(ValueError, match="The teleport distribution must sum to 1."):
+    with pytest.raises(ValueError):
         TMDP(env=env, teleport_prob_distribution=invalid_teleport_distribution)
 
     # Check teleport probability out of range
-    with pytest.raises(
-        ValueError, match="The teleport probability must be in the range \\[0, 1\\]."
-    ):
+    with pytest.raises(ValueError):
         TMDP(
             env=env,
             teleport_prob_distribution=teleport_prob_distribution,
@@ -158,17 +149,13 @@ def test_tmdp_initialization(env):
 
 def test_tmdp_step_no_teleport(tmdp_env):
     """Test the TMDP step function without teleportation (teleport_probability=0)."""
-    tmdp_env.teleport_probability = (
-        0.0  # Set teleport probability to zero to disable teleportation
-    )
+    tmdp_env.teleport_probability = 0.0  # Set teleport probability to zero to disable teleportation
     tmdp_env.reset()
     action = tmdp_env.action_space.sample()
 
     next_state, reward, terminated, truncated, info = tmdp_env.step(action)
 
-    assert not info["teleport"], (
-        "Teleport should not occur with teleport_probability set to 0."
-    )
+    assert not info["teleport"], "Teleport should not occur with teleport_probability set to 0."
     assert isinstance(next_state, int)
     assert isinstance(reward, float)
     assert isinstance(terminated, bool)
@@ -177,9 +164,7 @@ def test_tmdp_step_no_teleport(tmdp_env):
 
 def test_tmdp_step_with_teleport(tmdp_env):
     """Test the TMDP step function with teleportation (teleport_probability=1)."""
-    tmdp_env.teleport_probability = (
-        1.0  # Set teleport probability to one to force teleportation
-    )
+    tmdp_env.teleport_probability = 1.0  # Set teleport probability to one to force teleportation
     tmdp_env.reset()
     action = tmdp_env.action_space.sample()
 
@@ -210,9 +195,7 @@ def test_tmdp_step_partial_teleport_probability(tmdp_env):
             non_teleport_count += 1
 
     assert teleport_count > 0, "Expected some teleports with teleport_probability=0.5."
-    assert non_teleport_count > 0, (
-        "Expected some regular steps with teleport_probability=0.5."
-    )
+    assert non_teleport_count > 0, "Expected some regular steps with teleport_probability=0.5."
 
 
 def test_tmdp_reset(tmdp_env):

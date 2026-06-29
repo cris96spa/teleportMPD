@@ -3,10 +3,9 @@ import re
 import shlex
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from textwrap import dedent
-
-import tomllib
 
 DEFAULT_TEMPLATE_URL = "git@github.com:cris96spa/python-repo-template.git"
 DEFAULT_TEMPLATE_BRANCH = "main"
@@ -27,9 +26,7 @@ def main(
     print("Ensuring uv is already installed")
     ensure_uv_is_installed()
 
-    print(
-        "Ensuring no previous graft commits exist"
-    )  # would break first project commit detection
+    print("Ensuring no previous graft commits exist")  # would break first project commit detection
     ensure_no_previous_graft_commits_exist()
 
     print("Getting project info: default branch and first project commit")
@@ -44,9 +41,7 @@ def main(
         print("Template remote already exists, skipping addition")
     else:
         print("Adding template remote")
-        ret_code = subprocess.call(
-            ["git", "remote", "add", "template", template_remote_url]
-        )
+        ret_code = subprocess.call(["git", "remote", "add", "template", template_remote_url])
         exit_on_nonzero_return_code(
             ret_code,
             "ERROR: git remote add command failed while adding template remote.",
@@ -56,17 +51,13 @@ def main(
 
     try:  # ensure cleanup of "template" remote
         git_set_remote_to_be_readonly("template", template_target_branch)
-        fetch_return_code = subprocess.call(
-            ["git", "fetch", "template", template_target_branch]
-        )
+        fetch_return_code = subprocess.call(["git", "fetch", "template", template_target_branch])
         exit_on_nonzero_return_code(
             fetch_return_code,
             "ERROR: git fetch from the template remote failed.",
         )
 
-        if (
-            not template_reference_commit
-        ):  # if no template reference commit specified, guess it
+        if not template_reference_commit:  # if no template reference commit specified, guess it
             print("No template reference commit specified, guessing the correct one")
             first_commit_date = get_command_output(
                 f"git log --reverse --format=%cd --date=iso origin/{project_base_branch}"
@@ -139,9 +130,7 @@ def main(
             )
 
     finally:
-        remote_remove_return_code = subprocess.call(
-            ["git", "remote", "remove", "template"]
-        )
+        remote_remove_return_code = subprocess.call(["git", "remote", "remove", "template"])
         exit_on_nonzero_return_code(
             remote_remove_return_code,
             (
@@ -172,9 +161,7 @@ def main(
                 commit_return_code, "ERROR: git commit command failed while committing."
             )
 
-        ret = subprocess.call(
-            ["git", "push", "--set-upstream", "origin", UPDATE_BRANCH_NAME]
-        )
+        ret = subprocess.call(["git", "push", "--set-upstream", "origin", UPDATE_BRANCH_NAME])
         if ret != 0:
             print(
                 "Template update completed successfully, but git push failed. Please push manually."
@@ -199,13 +186,13 @@ def ensure_uv_is_installed() -> None:
     print("uv is not installed.")
     uv_installation_command = "curl -LsSf https://astral.sh/uv/install.sh | sh"
     if sys.platform == "win32":
-        uv_installation_command = 'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'
+        uv_installation_command = (
+            'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'
+        )
     answer = None
     while answer not in ("y", "n", "no", "yes"):
         answer = (
-            input(
-                "uv is required to manage dependencies. Do you want to install uv now? (Y/n): "
-            )
+            input("uv is required to manage dependencies. Do you want to install uv now? (Y/n): ")
             .strip()
             .lower()
         )
@@ -345,11 +332,7 @@ def get_current_git_branch() -> str:
     Returns:
         The name of the current git branch.
     """
-    branch = (
-        subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-        .strip()
-        .decode()
-    )
+    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip().decode()
     return branch
 
 
@@ -468,9 +451,7 @@ def update_template_references_in_pyproject(
         )
         # replace the whole section
         section_length = (
-            next_section_match.start()
-            if next_section_match
-            else len(content) - section_start
+            next_section_match.start() if next_section_match else len(content) - section_start
         )
         updated_content = (
             content[:section_start]
@@ -523,9 +504,7 @@ def get_available_template_branches(template_url: str) -> list[str]:
     """
     try:
         result = (
-            subprocess.check_output(["git", "ls-remote", "--heads", template_url])
-            .decode()
-            .strip()
+            subprocess.check_output(["git", "ls-remote", "--heads", template_url]).decode().strip()
         )
     except subprocess.CalledProcessError:
         print(
@@ -544,14 +523,12 @@ def get_available_template_branches(template_url: str) -> list[str]:
 if __name__ == "__main__":
     # read default properties from [tool.template] section of pyproject.toml
     pyproject_path = "pyproject.toml"
-    default_template_commit, template_branch_from_toml = (
-        get_template_info_from_pyproject(pyproject_path)
+    default_template_commit, template_branch_from_toml = get_template_info_from_pyproject(
+        pyproject_path
     )
     default_template_branch = template_branch_from_toml or DEFAULT_TEMPLATE_BRANCH
 
-    parser = argparse.ArgumentParser(
-        description="Update project from template repository."
-    )
+    parser = argparse.ArgumentParser(description="Update project from template repository.")
     parser.add_argument(
         "-u",
         "--template-url",

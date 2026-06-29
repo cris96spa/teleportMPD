@@ -1,13 +1,15 @@
 from contextlib import closing
 from io import StringIO
-from typing import Any, Literal, SupportsFloat
+from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, SupportsFloat
 
 import gymnasium as gym
 import numpy as np
-from git import TYPE_CHECKING
 from gymnasium import spaces, utils
 from gymnasium.envs.toy_text.utils import categorical_sample
 from gymnasium.error import DependencyNotInstalled
+from overrides import override
 
 from teleport_mdp.utils.frozen_lake import generate_random_map
 
@@ -24,6 +26,16 @@ UP = 3
 
 # Define the action type
 Action = Literal[0, 1, 2, 3]
+
+
+class Transition(NamedTuple):
+    """A single environment transition."""
+
+    probability: float
+    next_state: int
+    reward: float
+    terminated: bool
+
 
 # Base maps
 MAPS = {
@@ -43,11 +55,13 @@ MAPS = {
 
 # region Frozen Lake
 class TeleportFrozenLakeEnv(TeleportEnv):
-    """Frozen lake involves crossing a frozen lake from start to goal without falling into any holes
-    by walking over the frozen lake.
+    """Frozen lake environment: cross a frozen lake from start to goal.
 
-    The player may not always move in the intended direction due to the slippery nature of the frozen lake.
-    With the teleportation distribution, the player may teleport to a random state with a given probability.
+    Crossing the lake means walking from start to goal without falling into any
+    holes. The player may not always move in the intended direction due to the
+    slippery nature of the frozen lake. With the teleportation distribution, the
+    player may teleport to a random state with a given probability.
+
     ## Description
     The game starts with the player at location [0,0] of the frozen lake grid world with the
     goal located at far extent of the world e.g. [3,3] for the 4x4 environment.
@@ -98,10 +112,12 @@ class TeleportFrozenLakeEnv(TeleportEnv):
 
     - Termination:
         1. The player moves into a hole.
-        2. The player reaches the goal at `max(nrow) * max(ncol) - 1` (location `[max(nrow)-1, max(ncol)-1]`).
+        2. The player reaches the goal at `max(nrow) * max(ncol) - 1`
+           (location `[max(nrow)-1, max(ncol)-1]`).
 
     - Truncation (when using the time_limit wrapper):
-        1. The length of the episode is 100 for 4x4 environment, 200 for FrozenLake8x8-v1 environment.
+        1. The length of the episode is 100 for the 4x4 environment, 200 for
+           the FrozenLake8x8-v1 environment.
 
     ## Information
 
@@ -116,7 +132,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
     ```python
     import gymnasium as gym
 
-    gym.make('FrozenLake-v1', desc=None, map_name='4x4', is_slippery=True)
+    gym.make("FrozenLake-v1", desc=None, map_name="4x4", is_slippery=True)
     ```
 
     `desc=None`: Used to specify maps non-preloaded maps.
@@ -135,7 +151,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
     ```
     from gymnasium.envs.toy_text.frozen_lake import generate_random_map
 
-    gym.make('FrozenLake-v1', desc=generate_random_map(size=8))
+    gym.make("FrozenLake-v1", desc=generate_random_map(size=8))
     ```
 
     `map_name="4x4"`: ID to use any of the preloaded maps.
@@ -162,9 +178,9 @@ class TeleportFrozenLakeEnv(TeleportEnv):
     If `desc=None` then `map_name` will be used. If both `desc` and `map_name` are
     `None` a random 8x8 map with 80% of locations frozen will be generated.
 
-    <a id="is_slippy"></a>`is_slippery=True`: If true the player will move in intended direction with
-    probability of 1/3 else will move in either perpendicular direction with
-    equal probability of 1/3 in both directions.
+    <a id="is_slippy"></a>`is_slippery=True`: If true the player will move in the
+    intended direction with probability of 1/3 else will move in either
+    perpendicular direction with equal probability of 1/3 in both directions.
 
     For example, if action is left and is_slippery is True, then:
     - P(move left)=1/3
@@ -178,7 +194,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
 
     """
 
-    metadata = {
+    metadata: ClassVar[dict[str, Any]] = {
         "render_modes": ["human", "ansi", "rgb_array"],
         "render_fps": 4,
     }
@@ -212,93 +228,12 @@ class TeleportFrozenLakeEnv(TeleportEnv):
 
         # the initial state distribution is fixed and assume
         # the player always starts at the start location 0
-        self.initial_state_distrib = (
-            np.array(self.desc == b"S").astype("float64").ravel()
-        )
+        self.initial_state_distrib = np.array(self.desc == b"S").astype("float64").ravel()
         self.initial_state_distrib /= self.initial_state_distrib.sum()
 
-        # initialize the probability transition matrix
-        self.P = {s: {a: [] for a in range(n_actions)} for s in range(n_states)}  # type: ignore
+        # build the probability transition matrix
+        self.P = self._build_transition_matrix(n_states, n_actions, is_slippery)
 
-        def to_s(row: int, col: int) -> int:
-            """Convert row and column to state number.
-
-            parameters:
-            -----------
-            - `row`: the row number.
-            - `col`: the column number.
-
-            returns:
-            --------
-            int: the state number.
-            """
-            return row * self.ncol + col
-
-        def inc(row: int, col: int, a: Action) -> tuple[int, int]:
-            """Increment row and column based on action.
-
-            parameters:
-            -----------
-            - `row`: the row number.
-            - `col`: the column number.
-            - `a`: the action to take.
-
-            returns:
-            --------
-            tuple[int, int]: the new row and column.
-            """
-            if a == LEFT:
-                col = max(col - 1, 0)
-            elif a == DOWN:
-                row = min(row + 1, self.nrow - 1)
-            elif a == RIGHT:
-                col = min(col + 1, self.ncol - 1)
-            elif a == UP:
-                row = max(row - 1, 0)
-            return (row, col)
-
-        def update_probability_matrix(
-            row: int, col: int, action: Action
-        ) -> tuple[int, float, float]:
-            """Update the probability matrix based on the action.
-
-            parameters:
-            -----------
-            - `row`: the row number.
-            - `col`: the column number.
-            - `action`: the action to take.
-
-            returns:
-            --------
-            tuple[int, float, float]: the new row, the new column, and the reward.
-            """
-            new_row, new_col = inc(row, col, action)
-            new_state = to_s(new_row, new_col)
-            new_letter = self.desc[new_row, new_col]
-            terminated = bytes(new_letter) in b"GH"
-            reward = float(new_letter == b"G")
-            return new_state, reward, terminated
-
-        for row in range(self.nrow):
-            for col in range(self.ncol):
-                s = to_s(row, col)
-                for a in range(4):
-                    li = self.P[s][a]
-                    letter = self.desc[row, col]
-                    if letter in b"GH":
-                        li.append((1.0, s, 0, True))
-                    elif is_slippery:
-                        for b in [(a - 1) % 4, a, (a + 1) % 4]:
-                            li.append(
-                                (
-                                    1.0 / 3.0,
-                                    *update_probability_matrix(row, col, b),  # type: ignore
-                                )
-                            )
-                    else:
-                        li.append(
-                            (1.0, *update_probability_matrix(row, col, a))  # type: ignore
-                        )
         # define the observation and action space
         self.observation_space = spaces.Discrete(n_states)
         self.action_space = spaces.Discrete(n_actions)
@@ -321,29 +256,124 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         self.goal_img = None
         self.start_img = None
 
+    def _to_s(self, row: int, col: int) -> int:
+        """Convert a row and column to a state number.
+
+        Args:
+            row: the row number.
+            col: the column number.
+
+        Returns:
+            The state number corresponding to ``(row, col)``.
+        """
+        return row * self.ncol + col
+
+    def _inc(self, row: int, col: int, action: int) -> tuple[int, int]:
+        """Move within the grid according to an action, clamping at the borders.
+
+        Args:
+            row: the row number.
+            col: the column number.
+            action: the action to take.
+
+        Returns:
+            The new ``(row, col)`` position after applying the action.
+        """
+        if action == LEFT:
+            col = max(col - 1, 0)
+        elif action == DOWN:
+            row = min(row + 1, self.nrow - 1)
+        elif action == RIGHT:
+            col = min(col + 1, self.ncol - 1)
+        elif action == UP:
+            row = max(row - 1, 0)
+        return (row, col)
+
+    def _update_probability_matrix(
+        self, row: int, col: int, action: int
+    ) -> tuple[int, float, bool]:
+        """Compute the transition produced by taking an action in a cell.
+
+        Args:
+            row: the row number.
+            col: the column number.
+            action: the action to take.
+
+        Returns:
+            The new state, the obtained reward, and whether the new state is
+            terminal.
+        """
+        new_row, new_col = self._inc(row, col, action)
+        new_state = self._to_s(new_row, new_col)
+        new_letter = self.desc[new_row, new_col]
+        terminated = bytes(new_letter) in b"GH"
+        reward = float(new_letter == b"G")
+        return new_state, reward, terminated
+
+    def _build_transition_matrix(
+        self, n_states: int, n_actions: int, is_slippery: bool
+    ) -> dict[int, dict[int, list[Transition]]]:
+        """Build the transition probability matrix of the environment.
+
+        Args:
+            n_states: the number of states in the environment.
+            n_actions: the number of available actions.
+            is_slippery: whether moves are stochastic (slippery lake).
+
+        Returns:
+            A mapping from each state to a mapping from each action to the list
+            of possible transitions.
+        """
+        transition_matrix: dict[int, dict[int, list[Transition]]] = {
+            s: {a: [] for a in range(n_actions)} for s in range(n_states)
+        }
+        for row in range(self.nrow):
+            for col in range(self.ncol):
+                s = self._to_s(row, col)
+                for a in range(n_actions):
+                    transitions = transition_matrix[s][a]
+                    letter = self.desc[row, col]
+                    if letter in b"GH":
+                        transitions.append(Transition(1.0, s, 0.0, True))
+                    elif is_slippery:
+                        for b in [(a - 1) % 4, a, (a + 1) % 4]:
+                            transitions.append(
+                                Transition(
+                                    1.0 / 3.0,
+                                    *self._update_probability_matrix(row, col, b),
+                                )
+                            )
+                    else:
+                        transitions.append(
+                            Transition(1.0, *self._update_probability_matrix(row, col, a))
+                        )
+        return transition_matrix
+
     # endregion
     # region Gym API
-    def step(self, a: Any) -> tuple[int, SupportsFloat, bool, bool, dict[str, Any]]:
+    @override
+    def step(self, action: int) -> tuple[int, SupportsFloat, bool, bool, dict[str, Any]]:
         """Take a step in the environment.
 
-        parameters:
-        -----------
-        - `a`: the action to take.
+        Args:
+            action: the action to take.
 
-        returns:
-        --------
-        Tupe[s_prime, r, terminated, truncated, info]: the next state, reward, termination flag, truncation flag, and info dictionary containing a teleport flag.
+        Returns:
+            A tuple ``(s_prime, r, terminated, truncated, info)`` with the next
+            state, reward, termination flag, truncation flag, and an info
+            dictionary holding the transition probability.
         """
-        transitions = self.P[int(self.s)][a]
-        i = categorical_sample([t[0] for t in transitions], self.np_random)
-        p, s, r, t = transitions[i]
+        transitions = self.P[int(self.s)][action]
+        i = categorical_sample([t.probability for t in transitions], self.np_random)
+        probability, s, r, terminated = transitions[i]
         self.s: int = s
-        self.lastaction = a
+        self.lastaction = action
 
         if self.render_mode == "human":
             self.render()
-        return int(s), r, t, False, {"prob": p}
+        return int(s), r, terminated, False, {"prob": probability}
 
+    @override
     def reset(
         self,
         *,
@@ -352,23 +382,23 @@ class TeleportFrozenLakeEnv(TeleportEnv):
     ) -> tuple[int, dict[str, Any]]:
         """Reset the environment.
 
-        parameters:
-        -----------
-        - `seed`: the seed to use for random number generation.
-        - `options`: additional options to pass to the environment.
+        Args:
+            seed: the seed to use for random number generation.
+            options: additional options to pass to the environment.
 
-        returns:
-        --------
-        Tupe[s_prime, info]: the next state and info dictionary containing a teleport flag.
+        Returns:
+            A tuple ``(state, info)`` with the initial state and an info
+            dictionary holding the transition probability.
         """
         super().reset(seed=seed, options=options)
-        self.s = categorical_sample(self.initial_state_distrib, self.np_random)
+        self.s = int(categorical_sample(self.initial_state_distrib, self.np_random))
         self.lastaction = None
 
         if self.render_mode == "human":
             self.render()
         return int(self.s), {"prob": 1}
 
+    @override
     def render(self):
         """Render the environment."""
         if self.render_mode is None:
@@ -387,16 +417,21 @@ class TeleportFrozenLakeEnv(TeleportEnv):
 
     # endregion
     # region TeleportEnv
+    @override(check_signature=False)
     def is_terminal(self, state: int) -> bool:
-        """Returns whether the given state is terminal. In the context of FrozenLake, a terminal state is a state that is either a hole or the goal.
+        """Return whether the given state is terminal.
 
-        parameters:
-        -----------
-        - `state`: the state to check.
+        In the context of FrozenLake, a terminal state is one that is either a
+        hole or the goal.
 
-        returns:
-        --------
-        bool: True if the state is terminal, False otherwise.
+        Args:
+            state: the state to check.
+
+        Returns:
+            ``True`` if the state is terminal, ``False`` otherwise.
+
+        Raises:
+            ValueError: if the state is outside the valid state range.
         """
         if state < 0 or state >= self.nrow * self.ncol:
             raise ValueError(
@@ -409,30 +444,28 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         row, col = state // self.ncol, state % self.ncol
         return bytes(self.desc[row, col]) in b"GH"
 
-    def teleport(
-        self, teleport_prob_distribution: np.ndarray[Any, np.dtype[Any]]
-    ) -> int:
+    @override(check_signature=False)
+    def teleport(self, teleport_distribution: np.ndarray[Any, np.dtype[Any]]) -> int:
         """Teleport the agent to a random state.
-        In the context of FrozenLake, the agent is teleported to a random state based on the teleportation distribution.
-        The state must be a valid non-terminal state.
-        parameters:
-        -----------
-        - `teleport_prob_distribution`: the teleport probability distribution.
 
-        returns:
-        --------
-        int: the new state.
+        In the context of FrozenLake, the agent is teleported to a random state
+        based on the teleportation distribution. The state must be a valid
+        non-terminal state.
+
+        Args:
+            teleport_distribution: the teleport probability distribution.
+
+        Returns:
+            The new state.
         """
         while True:
-            s_prime = int(
-                categorical_sample(teleport_prob_distribution, self.np_random)
-            )
+            s_prime = int(categorical_sample(teleport_distribution, self.np_random))
             if not self.is_terminal(s_prime):
                 return s_prime
 
     # endregion
     # region GUI
-    def _render_gui(self, mode: str) -> None | np.ndarray:
+    def _render_gui(self, mode: str) -> np.ndarray | None:
         try:
             import pygame
         except ImportError as e:
@@ -440,61 +473,87 @@ class TeleportFrozenLakeEnv(TeleportEnv):
                 'pygame is not installed, run `pip install "gymnasium[toy-text]"`'
             ) from e
 
-        if self.window_surface is None:
-            pygame.init()
-
-            if mode == "human":
-                pygame.display.init()
-                pygame.display.set_caption("Frozen Lake")
-                self.window_surface = pygame.display.set_mode(self.window_size)  # type: ignore
-            elif mode == "rgb_array":
-                self.window_surface = pygame.Surface(self.window_size)  # type: ignore
-
+        self._setup_render(pygame, mode)
         assert self.window_surface is not None, (
             "Something went wrong with pygame. This should never happen."
         )
 
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-        if self.hole_img is None:
-            file_name = "img/hole.png"
-            self.hole_img = pygame.transform.scale(
-                pygame.image.load(file_name), self.cell_size
-            )
-        if self.cracked_hole_img is None:
-            file_name = "img/cracked_hole.png"
-            self.cracked_hole_img = pygame.transform.scale(
-                pygame.image.load(file_name), self.cell_size
-            )
-        if self.ice_img is None:
-            file_name = "img/ice.png"
-            self.ice_img = pygame.transform.scale(
-                pygame.image.load(file_name), self.cell_size
-            )
-        if self.goal_img is None:
-            file_name = "img/goal.png"
-            self.goal_img = pygame.transform.scale(
-                pygame.image.load(file_name), self.cell_size
-            )
-        if self.start_img is None:
-            file_name = "img/stool.png"
-            self.start_img = pygame.transform.scale(
-                pygame.image.load(file_name), self.cell_size
-            )
-        if self.elf_images is None:
-            elfs = [
-                "img/elf_left.png",
-                "img/elf_down.png",
-                "img/elf_right.png",
-                "img/elf_up.png",
-            ]
-            self.elf_images = [
-                pygame.transform.scale(pygame.image.load(f_name), self.cell_size)
-                for f_name in elfs
-            ]
-
         desc = self.desc.tolist()
         assert isinstance(desc, list), f"desc should be a list or an array, got {desc}"
+        self._draw_board(pygame, desc)
+
+        if mode == "human":
+            pygame.event.pump()
+            pygame.display.update()
+            assert self.clock is not None
+            self.clock.tick(self.metadata["render_fps"])
+        elif mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.window_surface)),
+                axes=(1, 0, 2),
+            )
+        return None
+
+    def _setup_render(self, pygame: ModuleType, mode: str) -> None:
+        """Initialise the pygame window, clock, and image assets on first use."""
+        if self.window_surface is None:
+            pygame.init()
+            if mode == "human":
+                pygame.display.init()
+                pygame.display.set_caption("Frozen Lake")
+                self.window_surface = pygame.display.set_mode(self.window_size)
+            elif mode == "rgb_array":
+                self.window_surface = pygame.Surface(self.window_size)
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+        if self.elf_images is None:
+            self.hole_img = self._load_image(pygame, "img/hole.png")
+            self.cracked_hole_img = self._load_image(pygame, "img/cracked_hole.png")
+            self.ice_img = self._load_image(pygame, "img/ice.png")
+            self.goal_img = self._load_image(pygame, "img/goal.png")
+            self.start_img = self._load_image(pygame, "img/stool.png")
+            self.elf_images = [
+                self._load_image(pygame, file_name)
+                for file_name in (
+                    "img/elf_left.png",
+                    "img/elf_down.png",
+                    "img/elf_right.png",
+                    "img/elf_up.png",
+                )
+            ]
+
+    def _load_image(self, pygame: ModuleType, file_name: str) -> Any:
+        """Load an image from disk and scale it to the cell size.
+
+        When optional assets are not packaged with the project, fall back to a
+        plain colored tile so rendering still works in tests.
+        """
+        image_path = Path(__file__).parent / file_name
+        if image_path.exists():
+            return pygame.transform.scale(pygame.image.load(str(image_path)), self.cell_size)
+
+        fallback_surface = pygame.Surface(self.cell_size)
+        fallback_surface.fill(self._fallback_color(file_name))
+        return fallback_surface
+
+    def _fallback_color(self, file_name: str) -> tuple[int, int, int]:
+        """Return a deterministic fallback color for a missing sprite asset."""
+        color_map = {
+            "img/hole.png": (44, 62, 80),
+            "img/cracked_hole.png": (30, 45, 60),
+            "img/ice.png": (184, 223, 255),
+            "img/goal.png": (255, 215, 0),
+            "img/stool.png": (139, 90, 43),
+            "img/elf_left.png": (76, 175, 80),
+            "img/elf_down.png": (46, 125, 50),
+            "img/elf_right.png": (102, 187, 106),
+            "img/elf_up.png": (56, 142, 60),
+        }
+        return color_map.get(file_name, (200, 200, 200))
+
+    def _draw_board(self, pygame: ModuleType, desc: list[list[bytes]]) -> None:
+        """Draw the lake grid and the elf onto the pygame surface."""
+        assert self.window_surface is not None
         for y in range(self.nrow):
             for x in range(self.ncol):
                 pos = (x * self.cell_size[0], y * self.cell_size[1])
@@ -514,22 +573,13 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         bot_row, bot_col = self.s // self.ncol, self.s % self.ncol
         cell_rect = (bot_col * self.cell_size[0], bot_row * self.cell_size[1])
         last_action = self.lastaction if self.lastaction is not None else 1
+        assert self.elf_images is not None
         elf_img = self.elf_images[last_action]
 
         if desc[bot_row][bot_col] == b"H":
             self.window_surface.blit(self.cracked_hole_img, cell_rect)
         else:
             self.window_surface.blit(elf_img, cell_rect)
-
-        if mode == "human":
-            pygame.event.pump()
-            pygame.display.update()
-            self.clock.tick(self.metadata["render_fps"])
-        elif mode == "rgb_array":
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.window_surface)),
-                axes=(1, 0, 2),
-            )
 
     def _render_text(self) -> str:
         desc = self.desc.tolist()
@@ -547,6 +597,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         with closing(outfile):
             return outfile.getvalue()
 
+    @override
     def close(self):
         if self.window_surface is not None:
             import pygame

@@ -56,4 +56,4 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           VERSION=${TAG:1}
           echo "Version: $VERSION"
-          uv run --with python-repo-template==$VERSION --no-project -- python -c "import teleport_mdp"
+          uv run --with teleport-mdp==$VERSION --no-project -- python -c "import teleport_mdp"

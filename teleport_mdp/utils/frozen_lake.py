@@ -23,11 +23,11 @@ def is_valid(board: list[list[str]], max_size: int) -> bool:
             position, False otherwise.
 
     Example:
-        >>> board = [['S', 'F', 'F'], ['F', 'H', 'F'], ['F', 'F', 'G']]
+        >>> board = [["S", "F", "F"], ["F", "H", "F"], ["F", "F", "G"]]
         >>> is_valid(board, 3)
         True
 
-        >>> board = [['S', 'H', 'F'], ['H', 'H', 'F'], ['F', 'F', 'G']]
+        >>> board = [["S", "H", "F"], ["H", "H", "F"], ["F", "F", "G"]]
         >>> is_valid(board, 3)
         False
 
@@ -55,20 +55,16 @@ def is_valid(board: list[list[str]], max_size: int) -> bool:
     return False
 
 
-def generate_random_map(
-    size: int = 8, p: float = 0.8, seed: int | None = None
-) -> list[str]:
-    """Generates a random valid map (one that has a path from start to goal)
+def generate_random_map(size: int = 8, p: float = 0.8, seed: int | None = None) -> list[str]:
+    """Generate a random valid map that has a path from start to goal.
 
-    parameters:
-    -----------
-    - size: size of each side of the grid
-    - p: probability that a tile is frozen
-    - seed: optional seed to ensure the generation of reproducible maps
+    Args:
+        size: size of each side of the grid.
+        p: probability that a tile is frozen.
+        seed: optional seed to ensure the generation of reproducible maps.
 
-    returns:
-    --------
-    list[str]: a list of strings representing the map.
+    Returns:
+        A list of strings representing the map.
     """
     valid = False
 
@@ -76,9 +72,7 @@ def generate_random_map(
 
     while not valid:
         p = min(1, p)
-        board: list[list[str]] = np_random.choice(
-            ["F", "H"], (size, size), p=[p, 1 - p]
-        )  # type: ignore
+        board: list[list[str]] = np_random.choice(["F", "H"], (size, size), p=[p, 1 - p]).tolist()
         board[0][0] = "S"
         board[-1][-1] = "G"
         valid = is_valid(board, size)
