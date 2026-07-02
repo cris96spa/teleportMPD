@@ -1,5 +1,15 @@
 """Tabular, model-based teleport-MDP quantities (numpy, no torch)."""
 
+from teleport_mdp.tabular.bound import (
+    BoundMetrics,
+    candidate_pairs,
+    compute_alpha_0,
+    compute_alpha_tau,
+    compute_tau_prime_0,
+    compute_tau_prime_1,
+    compute_teleport_bound,
+    optimal_pair,
+)
 from teleport_mdp.tabular.model_functions import (
     FloatArray,
     compute_d,
@@ -16,6 +26,7 @@ from teleport_mdp.tabular.model_functions import (
     compute_transition_kernel,
     compute_u_from_v,
     compute_v_from_q,
+    compute_value_function,
     get_d_exp_model,
     get_d_exp_policy,
     get_d_inf_model,
@@ -29,12 +40,19 @@ from teleport_mdp.tabular.q_learning import (
     QLearner,
     QLearningResult,
 )
+from teleport_mdp.tabular.tmpi import TMPI, TMPIResult
 
 __all__ = [
+    "TMPI",
+    "BoundMetrics",
     "FloatArray",
     "MetricLogger",
     "QLearner",
     "QLearningResult",
+    "TMPIResult",
+    "candidate_pairs",
+    "compute_alpha_0",
+    "compute_alpha_tau",
     "compute_d",
     "compute_delta",
     "compute_expected_model_advantage",
@@ -46,14 +64,19 @@ __all__ = [
     "compute_r_s_a",
     "compute_relative_model_advantage",
     "compute_relative_policy_advantage",
+    "compute_tau_prime_0",
+    "compute_tau_prime_1",
+    "compute_teleport_bound",
     "compute_transition_kernel",
     "compute_u_from_v",
     "compute_v_from_q",
+    "compute_value_function",
     "get_d_exp_model",
     "get_d_exp_policy",
     "get_d_inf_model",
     "get_d_inf_policy",
     "get_policy",
     "get_sup_difference",
+    "optimal_pair",
     "softmax_policy",
 ]

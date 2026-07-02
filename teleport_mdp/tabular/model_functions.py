@@ -147,6 +147,32 @@ def compute_q_from_u(p_tau: FloatArray, u: FloatArray) -> FloatArray:
     return np.einsum("san,san->sa", p_tau, u)
 
 
+def compute_value_function(
+    p_tau: FloatArray, reward: FloatArray, pi: FloatArray, gamma: float
+) -> FloatArray:
+    """Exact value function of a policy by solving the Bellman equations.
+
+    Solves `V = R_pi + gamma P_pi V` (a linear system), where
+    `R_pi(s) = sum_a pi(a|s) sum_s' P_tau(s'|s, a) R(s, a, s')` and
+    `P_pi(s'|s) = sum_a pi(a|s) P_tau(s'|s, a)`. The teleport is assumed folded
+    into `p_tau` (use :func:`compute_p_tau`).
+
+    Args:
+        p_tau: Teleport transition tensor `[nS, nA, nS]`.
+        reward: Reward tensor `[nS, nA, nS]`.
+        pi: Policy `[nS, nA]`.
+        gamma: Discount factor in `(0, 1)`.
+
+    Returns:
+        The value function `[nS]`.
+    """
+    n_states = p_tau.shape[0]
+    r_sa = compute_r_s_a(p_tau, reward)
+    r_pi = np.sum(pi * r_sa, axis=1)
+    p_pi = compute_transition_kernel(p_tau, pi)
+    return np.linalg.solve(np.eye(n_states) - gamma * p_pi, r_pi)
+
+
 # endregion
 
 
