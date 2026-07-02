@@ -26,11 +26,11 @@ def build_static(*, cfg: ExperimentConfig) -> StaticTeleportScheduler:
         cfg: The experiment configuration.
 
     Returns:
-        A static teleport scheduler whose budget is derived from
-        `total_timesteps // n_steps`.
+        A static teleport scheduler whose budget is the number of PPO updates,
+        `total_timesteps // (n_steps * n_envs)`.
     """
     assert isinstance(cfg.algorithm, PPOConfig)
-    n_updates = max(1, cfg.total_timesteps // cfg.algorithm.n_steps)
+    n_updates = max(1, cfg.total_timesteps // (cfg.algorithm.n_steps * cfg.n_envs))
     return StaticTeleportScheduler(cfg.gamma, cfg.teleport.tau_0, n_updates)
 
 

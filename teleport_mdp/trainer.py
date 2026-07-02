@@ -72,7 +72,7 @@ class Trainer:
     ) -> RunResult:
         """Train and evaluate one seeded run."""
         set_random_seed(seed)
-        train_env = make_vec_env(self._cfg, n_envs=1, seed=seed)
+        train_env = make_vec_env(self._cfg, n_envs=self._cfg.n_envs, seed=seed)
         try:
             self._log_config(mlflow_logger)
             agent = build_agent(self._cfg, train_env, seed)

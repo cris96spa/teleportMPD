@@ -386,6 +386,9 @@ class ExperimentConfig(YamlBaseModel):
     total_timesteps: int = Field(default=100_000, gt=0, description="Total training timesteps.")
     seed: int | None = Field(default=None, description="Base RNG seed for reproducibility.")
     n_runs: int = Field(default=1, gt=0, description="Number of seeded repeats for CI bands.")
+    n_envs: int = Field(
+        default=1, gt=0, description="Number of parallel training environments in the VecEnv."
+    )
     env: EnvConfig = Field(default_factory=EnvConfig)
     teleport: TeleportConfig = Field(default_factory=TeleportConfig)
     curriculum: CurriculumConfig = Field(default_factory=CurriculumConfig)
