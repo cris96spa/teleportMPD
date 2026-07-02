@@ -1,6 +1,7 @@
 from typing import NamedTuple, Protocol
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from teleport_mdp.curriculum.scheduler import TeleportScheduler
 from teleport_mdp.models import QLearningConfig
@@ -62,6 +63,9 @@ class QLearner:
         env: TMDP,
         scheduler: TeleportScheduler | None = None,
         logger: MetricLogger | None = None,
+        *,
+        progress: bool = False,
+        desc: str = "Q-learning",
     ) -> QLearningResult:
         """Run Q-learning on a teleport-wrapped env, optionally annealing `tau`.
 
@@ -71,6 +75,9 @@ class QLearner:
                 `None` the teleport rate is left fixed (no curriculum).
             logger: Optional metric sink; receives `train/return` and
                 `curriculum/tau` at each status step.
+            progress: If `True`, show a tqdm progress bar over episodes with a
+                live return/tau readout.
+            desc: Label for the progress bar.
 
         Returns:
             The :class:`QLearningResult` with the final Q, snapshots, and analytics.
@@ -91,7 +98,8 @@ class QLearner:
         eps_0 = self._config.eps if self._config.eps > 0.0 else min(1.0, 2.0 * alpha_0)
         episodes = self._config.episodes
 
-        for episode in range(episodes):
+        bar = tqdm(range(episodes), desc=desc, unit="ep", disable=not progress, dynamic_ncols=True)
+        for episode in bar:
             frac = episode / episodes
             alpha = alpha_0 * (1.0 - frac)
             eps = eps_0 * (1.0 - frac) ** 2
@@ -103,14 +111,18 @@ class QLearner:
                 tau = self._current_tau(env)
                 tau_history.append(tau)
                 window = returns[-self._config.status_step :]
+                mean_return = float(np.mean(window))
                 if logger is not None:
                     logger.log_metrics(
-                        {"train/return": float(np.mean(window)), "curriculum/tau": tau},
+                        {"train/return": mean_return, "curriculum/tau": tau},
                         step=episode,
                     )
+                if progress:
+                    bar.set_postfix(ret=f"{mean_return:.3f}", tau=f"{tau:.3f}", refresh=False)
                 if scheduler is not None:
                     prev_policy = self._step_curriculum(env, q, prev_policy, scheduler)
 
+        bar.close()
         q_snapshots.append(q.copy())
         return QLearningResult(
             q=q,

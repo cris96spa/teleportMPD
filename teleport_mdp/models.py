@@ -144,9 +144,9 @@ class EnvConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     map_name: str | None = Field(
-        default=DEFAULT_MAP_NAME,
-        description="Built-in map name (e.g. '4x4', '8x8'). Ignored when `desc` is set; "
-        "set to null together with `desc` to generate a random map.",
+        default=None,
+        description="Built-in map name (e.g. '4x4', '8x8'). Ignored when `desc` is set; when "
+        "null (and no `desc`), a `size`x`size` random map is generated from `size`/`p`/`seed`.",
     )
     desc: list[str] | None = Field(
         default=None,
@@ -171,6 +171,30 @@ class EnvConfig(BaseModel):
         ge=0,
         description="Manhattan reward-shaping bins; 0 disables shaping.",
     )
+
+    @model_validator(mode="after")
+    def _require_map_source(self) -> Self:
+        """Require an explicit map source so no map is picked silently.
+
+        Valid sources: an explicit `map_name`, an explicit `desc`, or an explicit
+        random-map parameter (`size`/`p`/`seed`, which builds a random map). An env
+        block that sets none of these is rejected rather than defaulting quietly.
+
+        Returns:
+            The validated config instance.
+
+        Raises:
+            ValueError: If neither `map_name`, `desc`, nor a random-map parameter
+                is set.
+        """
+        if self.map_name is not None or self.desc is not None:
+            return self
+        if {"size", "p", "seed"} & self.model_fields_set:
+            return self
+        raise ValueError(
+            "No map source specified: set `map_name`, `desc`, or a random-map "
+            "parameter (`size`/`p`/`seed`)."
+        )
 
 
 class TeleportConfig(BaseModel):
@@ -389,7 +413,7 @@ class ExperimentConfig(YamlBaseModel):
     n_envs: int = Field(
         default=1, gt=0, description="Number of parallel training environments in the VecEnv."
     )
-    env: EnvConfig = Field(default_factory=EnvConfig)
+    env: EnvConfig = Field(default_factory=lambda: EnvConfig(map_name=DEFAULT_MAP_NAME))
     teleport: TeleportConfig = Field(default_factory=TeleportConfig)
     curriculum: CurriculumConfig = Field(default_factory=CurriculumConfig)
     optuna: OptunaConfig | None = Field(

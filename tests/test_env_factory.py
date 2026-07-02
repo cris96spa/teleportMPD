@@ -15,6 +15,24 @@ from teleport_mdp.models import EnvConfig, ExperimentConfig, TeleportConfig
 # region xi construction
 
 
+def test_size_is_honored_when_map_name_is_omitted():
+    """Setting `size` without `map_name` builds a `size`x`size` random map."""
+    env = make_env(EnvConfig(size=6, seed=0, is_slippery=False))
+    assert (env.nrow, env.ncol) == (6, 6)
+
+
+def test_explicit_map_name_takes_precedence_over_size():
+    """An explicit `map_name` wins; `size` is only used for random generation."""
+    env = make_env(EnvConfig(map_name="4x4", size=6))
+    assert (env.nrow, env.ncol) == (4, 4)
+
+
+def test_env_config_requires_a_map_source():
+    """An env block that sets no map source (map_name/desc/size/p/seed) is rejected."""
+    with pytest.raises(ValueError, match="No map source"):
+        EnvConfig(is_slippery=False)
+
+
 def test_uniform_xi_sums_to_one():
     """A uniform teleport distribution puts equal mass on every state."""
     env = make_env(EnvConfig(map_name="4x4"))

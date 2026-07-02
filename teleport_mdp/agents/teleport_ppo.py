@@ -138,8 +138,10 @@ class TeleportPPO(PPO):
             self._set_tau(tau_prime)
 
         if self._curriculum_log_interval and iteration % self._curriculum_log_interval == 0:
-            self.logger.record("teleport/tau", tau)
-            self.logger.record("teleport/tau_prime", tau_prime)
+            # Log the post-update rate now in effect, so the series anneals to 0 at
+            # the final update (logging the pre-update `tau` would bottom out one
+            # decrement above 0 and never record the terminal 0).
+            self.logger.record("teleport/tau", tau_prime)
             self.logger.record("teleport/d_inf", policy_shift)
 
     def _has_converged(self, policy_shift: float) -> bool:

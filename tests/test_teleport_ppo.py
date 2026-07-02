@@ -71,8 +71,8 @@ def _curriculum_config(**overrides: Any) -> ExperimentConfig:
     return ExperimentConfig(**base)
 
 
-def _tau_prime_values(logger: _StubLogger) -> list[float]:
-    return [m["teleport/tau_prime"] for m, _ in logger.metrics if "teleport/tau_prime" in m]
+def _tau_values(logger: _StubLogger) -> list[float]:
+    return [m["teleport/tau"] for m, _ in logger.metrics if "teleport/tau" in m]
 
 
 def test_static_curriculum_drives_tau_to_zero():
@@ -87,11 +87,11 @@ def test_static_curriculum_drives_tau_to_zero():
     assert 0.0 <= results[0].mean_return <= 1.0
 
     (logger,) = created
-    tau_primes = _tau_prime_values(logger)
-    assert tau_primes, "teleport/tau_prime was never logged"
-    assert tau_primes[-1] == pytest.approx(0.0)
+    taus = _tau_values(logger)
+    # The logged teleport/tau series is the post-update rate, so it reaches 0.
+    assert taus, "teleport/tau was never logged"
+    assert taus[-1] == pytest.approx(0.0)
     logged_keys = {key for metrics, _ in logger.metrics for key in metrics}
-    assert "teleport/tau" in logged_keys
     assert "teleport/d_inf" in logged_keys
 
 
@@ -102,7 +102,7 @@ def test_dynamic_curriculum_reduces_tau():
     Trainer(cfg, mlflow_config=_mlflow_config(), logger_factory=factory, progress=False).run()
 
     (logger,) = created
-    tau_primes = _tau_prime_values(logger)
-    assert tau_primes, "teleport/tau_prime was never logged"
-    assert min(tau_primes) < 0.5
-    assert all(value >= 0.0 for value in tau_primes)
+    taus = _tau_values(logger)
+    assert taus, "teleport/tau was never logged"
+    assert min(taus) < 0.5
+    assert all(value >= 0.0 for value in taus)

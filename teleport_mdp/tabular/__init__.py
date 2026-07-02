@@ -40,7 +40,7 @@ from teleport_mdp.tabular.q_learning import (
     QLearner,
     QLearningResult,
 )
-from teleport_mdp.tabular.tmpi import TMPI, TMPIResult
+from teleport_mdp.tabular.tmpi import TMPI, TMPIResult, dense_model
 
 __all__ = [
     "TMPI",
@@ -71,6 +71,7 @@ __all__ = [
     "compute_u_from_v",
     "compute_v_from_q",
     "compute_value_function",
+    "dense_model",
     "get_d_exp_model",
     "get_d_exp_policy",
     "get_d_inf_model",

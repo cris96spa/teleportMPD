@@ -8,7 +8,7 @@ import pytest
 from teleport_mdp.environments.factory import make_env
 from teleport_mdp.models import EnvConfig, TMPIConfig
 from teleport_mdp.tabular import TMPI
-from teleport_mdp.tabular.tmpi import _dense_model, _teleport_kernel
+from teleport_mdp.tabular.tmpi import _teleport_kernel, dense_model
 from teleport_mdp.wrappers.tmdp import TMDP
 
 
@@ -79,7 +79,7 @@ def test_teleport_kernel_keeps_terminal_states_absorbing():
     """The teleport kernel mixes xi only on non-terminal rows; terminals stay as P."""
     env = make_env(EnvConfig(map_name="4x4", is_slippery=False))
     tmdp = _wrap(env, tau=0.5)
-    p, _, _, non_terminal = _dense_model(tmdp)
+    p, _, _, non_terminal = dense_model(tmdp)
     xi = np.asarray(tmdp.teleport_prob_distribution)
 
     p_tau = _teleport_kernel(p, xi, tau=0.5, non_terminal=non_terminal)

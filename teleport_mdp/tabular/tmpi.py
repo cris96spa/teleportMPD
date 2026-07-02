@@ -1,6 +1,7 @@
 from typing import NamedTuple, Protocol
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from teleport_mdp.models import TMPIConfig
 from teleport_mdp.tabular.bound import BoundMetrics, optimal_pair
@@ -59,7 +60,14 @@ class TMPI:
         self._config = config
         self._gamma = gamma
 
-    def optimize(self, tmdp: TMDP, logger: MetricLogger | None = None) -> TMPIResult:
+    def optimize(
+        self,
+        tmdp: TMDP,
+        logger: MetricLogger | None = None,
+        *,
+        progress: bool = False,
+        desc: str = "TMPI",
+    ) -> TMPIResult:
         """Run TMPI on a tabular teleport MDP until convergence.
 
         Args:
@@ -68,11 +76,14 @@ class TMPI:
                 track `tau` across iterations.
             logger: Optional metric sink; receives `tmpi/performance`,
                 `tmpi/bound`, `tmpi/alpha`, and `curriculum/tau` per iteration.
+            progress: If `True`, show a tqdm progress bar over iterations with a
+                live performance/bound/tau readout.
+            desc: Label for the progress bar.
 
         Returns:
             The :class:`TMPIResult` with the final policy, value, and histories.
         """
-        p, reward, mu, non_terminal = _dense_model(tmdp)
+        p, reward, mu, non_terminal = dense_model(tmdp)
         xi = np.asarray(tmdp.teleport_prob_distribution, dtype=np.float64)
         gamma = self._gamma
 
@@ -86,7 +97,14 @@ class TMPI:
         tau_history: list[float] = []
 
         iterations = 0
-        for iteration in range(self._config.max_iterations):
+        bar = tqdm(
+            range(self._config.max_iterations),
+            desc=desc,
+            unit="it",
+            disable=not progress,
+            dynamic_ncols=True,
+        )
+        for iteration in bar:
             p_tau = _teleport_kernel(p, xi, tau, non_terminal)
             v = compute_value_function(p_tau, reward, pi, gamma)
             performance = float(mu @ v)
@@ -110,6 +128,13 @@ class TMPI:
                     },
                     step=iteration,
                 )
+            if progress:
+                bar.set_postfix(
+                    J=f"{performance:.4f}",
+                    bound=f"{bound_star:.2e}",
+                    tau=f"{tau:.4f}",
+                    refresh=False,
+                )
 
             iterations = iteration + 1
             if bound_star <= self._config.threshold:
@@ -118,6 +143,8 @@ class TMPI:
             pi = alpha_star * target_pi + (1.0 - alpha_star) * pi
             tau = tau_star
             tmdp.update_tau(tau)
+
+        bar.close()
 
         v = compute_value_function(_teleport_kernel(p, xi, tau, non_terminal), reward, pi, gamma)
         return TMPIResult(
@@ -212,7 +239,7 @@ def _d_inf_model_non_terminal(p: FloatArray, xi: FloatArray, non_terminal: Float
     return float(l1_norm[non_terminal.astype(bool)].max())
 
 
-def _dense_model(tmdp: TMDP) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
+def dense_model(tmdp: TMDP) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
     """Extract dense `(P[nS,nA,nS], R[nS,nA,nS], mu[nS], non_terminal[nS])`.
 
     `non_terminal` is a `{0, 1}` float mask flagging the non-terminal states
