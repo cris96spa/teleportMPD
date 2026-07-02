@@ -3,9 +3,10 @@
 # the per-update budget eps_tau is derived from total_timesteps / n_steps at runtime.
 name: frozen_lake_st_ppo
 gamma: 0.99
-total_timesteps: 500000
+total_timesteps: 1000000
 seed: 42
 n_runs: 1
+n_envs: 2
 
 algorithm:
   kind: ppo
@@ -22,11 +23,11 @@ env:
   # map_name: "8x8"
   is_slippery: false
   n_bins: 0
-  size: 16
+  size: 32
   # render_mode: "human"
 
 teleport:
-  tau_0: .35
+  tau_0: .45
   distribution: uniform_nonterminal
 
 curriculum:

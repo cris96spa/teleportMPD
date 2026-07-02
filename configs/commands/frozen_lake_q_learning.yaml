@@ -1,0 +1,23 @@
+# Tabular Q-learning baseline on FrozenLake (no teleport curriculum).
+name: frozen_lake_q_learning
+gamma: 0.99
+seed: 42
+n_runs: 1
+
+algorithm:
+  kind: q_learning
+  alpha: 0.6
+  eps: 0.4
+  episodes: 8000
+  status_step: 1000
+
+env:
+  map_name: "4x4"
+  is_slippery: false
+
+teleport:
+  tau_0: 0.0
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: none

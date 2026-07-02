@@ -1,0 +1,25 @@
+# Static-Teleport (S-T) tabular Q-learning curriculum on FrozenLake.
+# tau decreases linearly to 0 over the run's status steps (episodes // status_step).
+name: frozen_lake_st_q_learning
+gamma: 0.99
+seed: 42
+n_runs: 1
+
+algorithm:
+  kind: q_learning
+  alpha: 0.6
+  eps: 0.4
+  episodes: 120000
+  status_step: 500
+
+env:
+  is_slippery: false
+  size: 8
+  # render_mode: "human"
+
+teleport:
+  tau_0: 0.35
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: static
