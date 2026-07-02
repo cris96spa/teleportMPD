@@ -26,7 +26,6 @@ env:
 teleport:
   tau_0: 0.9
   distribution: uniform_nonterminal
-  discount_tau: true
 
 # eps is the total per-update state-visit shift budget; with gamma=0.99 the policy
 # shift consumes gamma/(1-gamma)=99x its D_inf, so eps must be generous for tau to

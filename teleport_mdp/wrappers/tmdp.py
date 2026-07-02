@@ -26,8 +26,6 @@ class TMDP(Wrapper):
             over the state space.
         teleport_probability: the probability of teleporting to a random state.
             Default is 0.0.
-        discount_tau: whether to scale the per-step env reward by `(1 - tau)`
-            on non-teleport steps (the effective-discount behaviour). Default is `True`.
     """
 
     def __init__(
@@ -35,7 +33,6 @@ class TMDP(Wrapper):
         env: TeleportEnv,
         teleport_prob_distribution: ndarray[Any, np.dtype[Any]],
         teleport_probability: float = 0.0,
-        discount_tau: bool = True,
     ) -> None:
         super().__init__(env)
         if not isinstance(env, TeleportEnv):
@@ -45,7 +42,6 @@ class TMDP(Wrapper):
             raise ValueError("The teleport distribution must sum to 1.")
 
         self.teleport_prob_distribution = teleport_prob_distribution
-        self.discount_tau = discount_tau
         self.env: TeleportEnv = env
         self.update_tau(teleport_probability)
         self.reset()
@@ -103,8 +99,6 @@ class TMDP(Wrapper):
         else:
             s_prime, r, terminated, truncated, info = self.env.step(action)
             r = float(r)
-            if self.discount_tau:
-                r *= 1 - self.teleport_probability
             info["teleport"] = False
 
         if self.render_mode == "human":

@@ -185,11 +185,6 @@ class TeleportConfig(BaseModel):
         default=TeleportDistribution.UNIFORM_NONTERMINAL,
         description="How the teleport distribution xi over states is built.",
     )
-    discount_tau: bool = Field(
-        default=True,
-        description="Whether to scale env reward by (1 - tau) on non-teleport steps "
-        "(the effective-discount behaviour from the thesis).",
-    )
     custom_xi_path: Path | None = Field(
         default=None,
         description="Path to a custom xi distribution; required when distribution is 'custom'.",
@@ -261,7 +256,7 @@ class CurriculumConfig(BaseModel):
 
 
 class PPOConfig(BaseModel):
-    """Stable-Baselines3 PPO hyperparameters (excluding ``gamma``, held at experiment level)."""
+    """Stable-Baselines3 PPO hyperparameters (excluding `gamma`, held at experiment level)."""
 
     model_config = ConfigDict(extra="forbid")
 

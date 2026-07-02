@@ -125,7 +125,6 @@ def wrap_tmdp(
     env: TeleportFrozenLakeEnv,
     xi: "NDArray[np.float64]",
     tau: float,
-    discount_tau: bool = True,
 ) -> TMDP:
     """Wrap an env in the teleport MDP at a given initial rate.
 
@@ -133,7 +132,6 @@ def wrap_tmdp(
         env: The unwrapped teleport environment.
         xi: The teleport distribution over states (must sum to 1).
         tau: The initial teleport rate, in `[0, 1)`.
-        discount_tau: Whether to scale the env reward by `(1 - tau)` per step.
 
     Returns:
         The :class:`TMDP`-wrapped environment.
@@ -142,7 +140,6 @@ def wrap_tmdp(
         env=env,
         teleport_prob_distribution=xi,
         teleport_probability=tau,
-        discount_tau=discount_tau,
     )
 
 
@@ -177,7 +174,7 @@ def make_vec_env(
         env: gym.Env
         if cfg.teleport.tau_0 > 0.0:
             xi = build_xi(base, cfg.teleport)
-            env = wrap_tmdp(base, xi, cfg.teleport.tau_0, discount_tau=cfg.teleport.discount_tau)
+            env = wrap_tmdp(base, xi, cfg.teleport.tau_0)
         else:
             env = base
         if max_episode_steps is not None:

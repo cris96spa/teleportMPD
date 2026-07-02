@@ -28,7 +28,6 @@ env:
 teleport:
   tau_0: .35
   distribution: uniform_nonterminal
-  discount_tau: true
 
 curriculum:
   kind: static
