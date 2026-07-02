@@ -1,11 +1,3 @@
-"""Teleport-rate scheduler factory (selects Static / Dynamic / none).
-
-``SchedulerRegistry`` maps a :class:`~teleport_mdp.enums.Curriculum` to the scheduler
-that drives the teleport anneal. The ``none`` curriculum is the passthrough key, so it
-resolves to ``None`` (no scheduler — vanilla PPO), letting the agent factory decide the
-agent class purely from "is there a scheduler?".
-"""
-
 from collections.abc import Callable
 from typing import ClassVar
 
@@ -27,15 +19,15 @@ class SchedulerRegistry(ComponentRegistry[TeleportScheduler]):
 
 
 @SchedulerRegistry.register(Curriculum.STATIC)
-def _build_static(*, cfg: ExperimentConfig) -> StaticTeleportScheduler:
-    """Build the static scheduler, reaching ``tau == 0`` over the run's updates.
+def build_static(*, cfg: ExperimentConfig) -> StaticTeleportScheduler:
+    """Build the static scheduler, reaching `tau == 0` over the run's updates.
 
     Args:
         cfg: The experiment configuration.
 
     Returns:
         A static teleport scheduler whose budget is derived from
-        ``total_timesteps // n_steps``.
+        `total_timesteps // n_steps`.
     """
     assert isinstance(cfg.algorithm, PPOConfig)
     n_updates = max(1, cfg.total_timesteps // cfg.algorithm.n_steps)
@@ -43,11 +35,11 @@ def _build_static(*, cfg: ExperimentConfig) -> StaticTeleportScheduler:
 
 
 @SchedulerRegistry.register(Curriculum.DYNAMIC)
-def _build_dynamic(*, cfg: ExperimentConfig) -> DynamicTeleportScheduler:
+def build_dynamic(*, cfg: ExperimentConfig) -> DynamicTeleportScheduler:
     """Build the dynamic, policy-shift-aware scheduler.
 
     Args:
-        cfg: The experiment configuration (``curriculum.eps`` / ``eps_tau_max`` are
+        cfg: The experiment configuration (`curriculum.eps` / `eps_tau_max` are
             guaranteed present by the config validator).
 
     Returns:
@@ -67,6 +59,6 @@ def build_scheduler(cfg: ExperimentConfig) -> TeleportScheduler | None:
         cfg: The experiment configuration.
 
     Returns:
-        The configured scheduler, or ``None`` when ``curriculum.kind`` is ``none``.
+        The configured scheduler, or `None` when `curriculum.kind` is `none`.
     """
     return SchedulerRegistry.create(cfg.curriculum.kind, cfg=cfg)

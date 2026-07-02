@@ -4,20 +4,20 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.logger import KVWriter
 from tqdm.auto import tqdm
 
-_DISPLAY_KEYS: dict[str, tuple[str, str]] = {
+DISPLAY_KEYS: dict[str, tuple[str, str]] = {
     "rollout/ep_rew_mean": ("rew", ".4f"),
     "rollout/ep_len_mean": ("len", ".1f"),
     "time/fps": ("fps", ".0f"),
 }
 
 
-class _ProgressOutputFormat(KVWriter):
-    """KVWriter that pipes selected metrics into the tqdm postfix on each dump."""
+class ProgressOutputFormat(KVWriter):
+    """SB3 output format that forwards each `logger.dump` to a tqdm bar."""
 
     def __init__(
         self,
         pbar: "tqdm[Any]",
-        display_keys: dict[str, tuple[str, str]] = _DISPLAY_KEYS,
+        display_keys: dict[str, tuple[str, str]] = DISPLAY_KEYS,
     ) -> None:
         self._pbar = pbar
         self._display_keys = display_keys
@@ -45,7 +45,7 @@ class ProgressCallback(BaseCallback):
     """tqdm progress bar with live metric display for SB3 training.
 
     Args:
-        desc: Bar label (e.g. ``"Run 2/3 (seed=6)"``).
+        desc: Bar label (e.g. `"Run 2/3 (seed=6)"`).
         verbose: SB3 verbosity level.
     """
 
@@ -53,13 +53,13 @@ class ProgressCallback(BaseCallback):
         super().__init__(verbose)
         self._desc = desc
         self._pbar: "tqdm[Any] | None" = None
-        self._output_format: _ProgressOutputFormat | None = None
+        self._output_format: ProgressOutputFormat | None = None
 
     def _on_training_start(self) -> None:
         """Create the bar and attach metric forwarding to the SB3 logger."""
         remaining = self.locals["total_timesteps"] - self.model.num_timesteps
         self._pbar = tqdm(total=remaining, unit="step", desc=self._desc, dynamic_ncols=True)
-        self._output_format = _ProgressOutputFormat(self._pbar)
+        self._output_format = ProgressOutputFormat(self._pbar)
         self.logger.output_formats.append(self._output_format)
 
     def _on_step(self) -> bool:

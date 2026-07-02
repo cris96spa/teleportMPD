@@ -1,19 +1,3 @@
-"""PPO with a teleport-rate curriculum (thesis Algorithms 2 & 3).
-
-``TeleportPPO`` ties together the two math-bearing pieces:
-
-- :class:`~teleport_mdp.agents.teleport_rollout_buffer.TeleportRolloutBuffer` truncates
-  GAE on teleport transitions, and
-- a :class:`~teleport_mdp.curriculum.scheduler.TeleportScheduler` lowers ``tau`` toward 0
-  over training.
-
-Each PPO update it measures the policy shift ``D_inf = max_s ||pi'(.|s) - pi(.|s)||_1``
-on the rollout observations (before vs. after ``train()``), asks the scheduler for the
-next ``tau``, pushes it to every environment, and records the teleport diagnostics to
-the SB3 logger (which the :class:`~teleport_mdp.callbacks.MlflowCallback` streams to
-MLflow). SB3's ``train()`` is wrapped, never forked, to keep upgrades easy.
-"""
-
 import numpy as np
 import torch as th
 from gymnasium import spaces
@@ -33,10 +17,10 @@ class TeleportPPO(PPO):
         *args: Positional arguments forwarded to :class:`stable_baselines3.PPO`.
         scheduler: The teleport-rate scheduler (static or dynamic) driving the curriculum.
         curriculum_log_interval: Record teleport diagnostics every this many updates.
-        convergence_threshold: If set, stop early once ``tau == 0`` and the policy shift
-            ``D_inf`` falls below this threshold.
+        convergence_threshold: If set, stop early once `tau == 0` and the policy shift
+            `D_inf` falls below this threshold.
         **kwargs: Keyword arguments forwarded to :class:`stable_baselines3.PPO`. The
-            ``rollout_buffer_class`` defaults to :class:`TeleportRolloutBuffer`.
+            `rollout_buffer_class` defaults to :class:`TeleportRolloutBuffer`.
     """
 
     def __init__(
@@ -73,7 +57,7 @@ class TeleportPPO(PPO):
     ) -> "TeleportPPO":
         """Train with PPO while annealing the teleport rate each update.
 
-        Mirrors SB3's ``OnPolicyAlgorithm.learn`` loop, but wraps ``train()`` to measure
+        Mirrors SB3's `OnPolicyAlgorithm.learn` loop, but wraps `train()` to measure
         the per-update policy shift and applies the scheduler before logging, so the
         teleport diagnostics are dumped together with the rollout metrics.
 
@@ -122,8 +106,8 @@ class TeleportPPO(PPO):
         """Run one PPO update and return the policy shift it induced.
 
         Snapshots the action distribution on the rollout observations before and after
-        ``train()`` and returns ``D_inf = max_s ||pi'(.|s) - pi(.|s)||_1`` (legacy
-        ``calculate_d_inf_distance``), kept on the same observation batch for consistency.
+        `train()` and returns `D_inf = max_s ||pi'(.|s) - pi(.|s)||_1` (legacy
+        `calculate_d_inf_distance`), kept on the same observation batch for consistency.
 
         Returns:
             The infinity-norm policy shift over the rollout observations.
@@ -142,10 +126,10 @@ class TeleportPPO(PPO):
         return float(th.max(l1_per_state).item())
 
     def _update_teleport_rate(self, policy_shift: float, iteration: int) -> None:
-        """Apply the scheduler, push the new ``tau`` to the envs, and log diagnostics.
+        """Apply the scheduler, push the new `tau` to the envs, and log diagnostics.
 
         Args:
-            policy_shift: The update's policy shift ``D_inf``.
+            policy_shift: The update's policy shift `D_inf`.
             iteration: The current update index (for the log interval).
         """
         tau = self.tau
@@ -159,7 +143,7 @@ class TeleportPPO(PPO):
             self.logger.record("teleport/d_inf", policy_shift)
 
     def _has_converged(self, policy_shift: float) -> bool:
-        """Whether to stop early: ``tau`` annealed to 0 and the policy has settled."""
+        """Whether to stop early: `tau` annealed to 0 and the policy has settled."""
         if self._convergence_threshold is None:
             return False
         return self.tau <= 0.0 and policy_shift < self._convergence_threshold
@@ -171,10 +155,10 @@ class TeleportPPO(PPO):
         rollout_buffer: TeleportRolloutBuffer,
         n_rollout_steps: int,
     ) -> bool:
-        """Collect a rollout, forwarding ``infos`` so the buffer can flag teleports.
+        """Collect a rollout, forwarding `infos` so the buffer can flag teleports.
 
-        This is SB3 2.9.0's ``OnPolicyAlgorithm.collect_rollouts`` with one change: the
-        per-step ``infos`` are passed to :meth:`TeleportRolloutBuffer.add` so it can mark
+        This is SB3 2.9.0's `OnPolicyAlgorithm.collect_rollouts` with one change: the
+        per-step `infos` are passed to :meth:`TeleportRolloutBuffer.add` so it can mark
         teleport transitions. SB3's timeout/bootstrap handling is left intact.
 
         Args:
@@ -184,7 +168,7 @@ class TeleportPPO(PPO):
             n_rollout_steps: Number of steps to collect per environment.
 
         Returns:
-            ``True`` if the rollout completed, ``False`` if a callback stopped it.
+            `True` if the rollout completed, `False` if a callback stopped it.
         """
         assert self._last_obs is not None, "No previous observation was provided"
         assert isinstance(rollout_buffer, TeleportRolloutBuffer), (

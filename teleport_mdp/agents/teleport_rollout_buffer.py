@@ -1,17 +1,3 @@
-"""Rollout buffer that truncates GAE/returns on teleport (thesis credit assignment).
-
-A teleport ends the current trajectory for credit-assignment purposes: the agent is
-restarted from the teleport distribution ``xi``, so value must not bootstrap *across*
-the teleport boundary. The teleport MDP alters the effective discount to
-``gamma_eff = gamma(1 - tau)`` and truncates the trajectory on teleport; this buffer
-implements that truncation on top of SB3's GAE.
-
-This is distinct from the ``done``/``TimeLimit`` bootstrap handling SB3 already does
-(which adds ``gamma * V(terminal_obs)`` for time-limit truncations): both behaviours
-are kept. The teleport reward is already 0 in the wrapper, so truncation here is purely
-about *not propagating* future advantage past the cut.
-"""
-
 from typing import Any
 
 import numpy as np
@@ -23,10 +9,10 @@ from stable_baselines3.common.buffers import RolloutBuffer
 class TeleportRolloutBuffer(RolloutBuffer):
     """:class:`~stable_baselines3.common.buffers.RolloutBuffer` with teleport truncation.
 
-    Records a per-transition ``teleport`` flag from ``info["teleport"]`` and, in
+    Records a per-transition `teleport` flag from `info["teleport"]` and, in
     :meth:`compute_returns_and_advantage`, masks the teleport step so the GAE
     recursion neither credits the teleport delta nor lets advantage from later steps
-    leak back across the teleport boundary. With all flags ``False`` it reduces
+    leak back across the teleport boundary. With all flags `False` it reduces
     exactly to the SB3 buffer.
 
     Args:
@@ -69,11 +55,11 @@ class TeleportRolloutBuffer(RolloutBuffer):
         """Record the teleport flags for the current step, then delegate to SB3.
 
         Args:
-            *args: Positional ``RolloutBuffer.add`` arguments (obs, action, reward,
+            *args: Positional `RolloutBuffer.add` arguments (obs, action, reward,
                 episode_start, value, log_prob).
-            infos: The per-env ``info`` dicts from ``env.step``; a truthy
-                ``info["teleport"]`` marks the transition as a teleport.
-            **kwargs: Extra keyword arguments forwarded to ``RolloutBuffer.add``.
+            infos: The per-env `info` dicts from `env.step`; a truthy
+                `info["teleport"]` marks the transition as a teleport.
+            **kwargs: Extra keyword arguments forwarded to `RolloutBuffer.add`.
         """
         for idx, info in enumerate(infos):
             self.teleport_flags[self.pos, idx] = 1.0 if info.get("teleport", False) else 0.0
@@ -82,12 +68,12 @@ class TeleportRolloutBuffer(RolloutBuffer):
     def compute_returns_and_advantage(self, last_values: th.Tensor, dones: np.ndarray) -> None:
         """Compute truncated GAE advantages and returns.
 
-        Mirrors SB3's GAE recursion but multiplies the per-step TD error ``delta`` and
-        the accumulated ``last_gae_lam`` by ``(1 - teleport)``. Zeroing ``delta`` drops
+        Mirrors SB3's GAE recursion but multiplies the per-step TD error `delta` and
+        the accumulated `last_gae_lam` by `(1 - teleport)`. Zeroing `delta` drops
         the (already-zero-reward) teleport transition from credit assignment; zeroing
-        the carried ``last_gae_lam`` stops advantage from steps after the teleport from
+        the carried `last_gae_lam` stops advantage from steps after the teleport from
         propagating back to steps before it — the trajectory truncation required by the
-        thesis (``gamma_eff = gamma(1 - tau)``; teleport restarts from ``xi``).
+        thesis (`gamma_eff = gamma(1 - tau)`; teleport restarts from `xi`).
 
         Args:
             last_values: Value estimates for the observation after the last step.

@@ -1,14 +1,5 @@
-"""Agent factory — returns the correct SB3 agent class for an experiment.
-
-``AgentRegistry`` maps a :class:`~teleport_mdp.enums.Algorithm` to the builder that
-assembles the agent. The on-policy factory only knows PPO; the tabular algorithms
-(Q-learning, TMPI) have their own runners. Within the PPO family, the *class* is chosen
-by the scheduler factory: no scheduler (``curriculum: none``) yields vanilla
-:class:`~stable_baselines3.PPO`, otherwise :class:`~teleport_mdp.agents.TeleportPPO`.
-"""
-
 from collections.abc import Callable
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -29,37 +20,13 @@ class AgentRegistry(ComponentRegistry[BaseAlgorithm]):
 
 
 def _ppo_kwargs(cfg: ExperimentConfig, env: VecEnv, seed: int) -> dict[str, Any]:
-    """Assemble the shared SB3 PPO constructor keyword arguments.
-
-    Args:
-        cfg: The experiment configuration.
-        env: The vectorized training environment.
-        seed: RNG seed for the agent.
-
-    Returns:
-        The keyword arguments common to ``PPO`` and ``TeleportPPO``.
-    """
-    ppo = cast(PPOConfig, cfg.algorithm)
+    """Assemble the SB3 PPO constructor kwargs shared by `PPO` and `TeleportPPO`."""
+    assert isinstance(cfg.algorithm, PPOConfig)
     return {
+        **cfg.algorithm.model_dump(exclude={"kind"}),
         "policy": "MlpPolicy",
         "env": env,
-        "n_steps": ppo.n_steps,
-        "batch_size": ppo.batch_size,
-        "n_epochs": ppo.n_epochs,
-        "gae_lambda": ppo.gae_lambda,
-        "normalize_advantage": ppo.normalize_advantage,
-        "learning_rate": ppo.learning_rate,
-        "clip_range": ppo.clip_range,
-        "clip_range_vf": ppo.clip_range_vf,
-        "ent_coef": ppo.ent_coef,
-        "vf_coef": ppo.vf_coef,
-        "max_grad_norm": ppo.max_grad_norm,
-        "target_kl": ppo.target_kl,
-        "use_sde": ppo.use_sde,
-        "sde_sample_freq": ppo.sde_sample_freq,
-        "stats_window_size": ppo.stats_window_size,
         "gamma": cfg.gamma,
-        "policy_kwargs": ppo.policy_kwargs,
         "seed": seed,
         "device": get_torch_device(),
         "verbose": 0,
@@ -67,11 +34,11 @@ def _ppo_kwargs(cfg: ExperimentConfig, env: VecEnv, seed: int) -> dict[str, Any]
 
 
 @AgentRegistry.register(Algorithm.PPO)
-def _build_ppo(*, cfg: ExperimentConfig, env: VecEnv, seed: int) -> PPO:
-    """Build vanilla ``PPO`` or curriculum ``TeleportPPO`` from the config.
+def build_ppo(*, cfg: ExperimentConfig, env: VecEnv, seed: int) -> PPO:
+    """Build vanilla `PPO` or curriculum `TeleportPPO` from the config.
 
-    The scheduler factory decides the class: ``None`` (``curriculum: none``) gives
-    vanilla PPO; any scheduler gives ``TeleportPPO`` wired to it.
+    The scheduler factory decides the class: `None` (`curriculum: none`) gives
+    vanilla PPO; any scheduler gives `TeleportPPO` wired to it.
 
     Args:
         cfg: The experiment configuration.

@@ -3,9 +3,7 @@ import pytest
 from teleport_mdp.curriculum import (
     DynamicTeleportScheduler,
     StaticTeleportScheduler,
-    compute_eps_model,
-    compute_n_updates,
-    compute_tau_prime,
+    TeleportScheduler,
 )
 
 
@@ -15,8 +13,8 @@ from teleport_mdp.curriculum import (
 )
 def test_eps_model_and_tau_prime_are_inverse(gamma, tau, n):
     """A single decrement at the n-update budget removes exactly tau / n."""
-    eps_tau = compute_eps_model(gamma, tau, n)
-    tau_prime = compute_tau_prime(gamma, tau, eps_tau)
+    eps_tau = TeleportScheduler.compute_eps_model(gamma, tau, n)
+    tau_prime = TeleportScheduler.compute_tau_prime(gamma, tau, eps_tau)
     assert tau_prime == pytest.approx(tau - tau / n)
 
 
@@ -26,8 +24,8 @@ def test_eps_model_and_tau_prime_are_inverse(gamma, tau, n):
 )
 def test_compute_n_updates_round_trip(gamma, tau_0, n):
     """compute_n_updates inverts compute_eps_model for the budget that reaches 0 in n."""
-    eps_tau = compute_eps_model(gamma, tau_0, n)
-    assert compute_n_updates(gamma, tau_0, eps_tau) == n
+    eps_tau = TeleportScheduler.compute_eps_model(gamma, tau_0, n)
+    assert TeleportScheduler.compute_n_updates(gamma, tau_0, eps_tau) == n
 
 
 @pytest.mark.parametrize(
@@ -77,7 +75,7 @@ def test_dynamic_small_shift_decreases_tau():
     d_inf = 0.001
     eps_pi = gamma / (1.0 - gamma) * d_inf  # 0.099
     eps_tau = min(eps - eps_pi, eps_tau_max)  # min(0.901, 0.05) = 0.05
-    expected = compute_tau_prime(gamma, 0.9, eps_tau)
+    expected = TeleportScheduler.compute_tau_prime(gamma, 0.9, eps_tau)
     tau = scheduler.next_tau(0.9, policy_shift=d_inf)
     assert tau == pytest.approx(expected)
     assert tau < 0.9

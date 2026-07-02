@@ -120,7 +120,7 @@ class Trainer:
         return float(mean_return), float(std_return)
 
     def _resolve_seeds(self) -> list[int]:
-        """Derive ``n_runs`` consecutive seeds from the base seed."""
+        """Derive `n_runs` consecutive seeds from the base seed."""
         base = 0 if self._cfg.seed is None else self._cfg.seed
         return [base + offset for offset in range(self._cfg.n_runs)]
 
