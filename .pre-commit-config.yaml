@@ -77,6 +77,13 @@ repos:
         language: system
         require_serial: true
         types: [python]
+      - id: test
+        name: Test Pytest
+        entry: make test
+        language: system
+        require_serial: true
+        types: [python]
+        pass_filenames: false
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v2.1.1

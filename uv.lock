@@ -3597,7 +3597,7 @@ dev = [
     { name = "properdocs", specifier = ">=1.6.1,<2.0.0" },
     { name = "pydoclint", extras = ["flake8"], specifier = ">=0.7.3,<0.9.0" },
     { name = "python-semantic-release", specifier = ">=9.21,<10.0.0" },
-    { name = "ruff", specifier = ">=0.15.11,<0.16.0" },
+    { name = "ruff", specifier = ">=0.15.20,<0.16.0" },
 ]
 release = [
     { name = "build", specifier = ">=1.3.0,<2.0.0" },

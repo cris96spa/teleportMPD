@@ -1,3 +1,5 @@
+from logging import getLogger
+
 import numpy as np
 import torch as th
 from gymnasium import spaces
@@ -7,7 +9,9 @@ from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.common.utils import obs_as_tensor
 
 from teleport_mdp.agents.teleport_rollout_buffer import TeleportRolloutBuffer
-from teleport_mdp.curriculum.scheduler import TeleportScheduler
+from teleport_mdp.curriculum.scheduler import DynamicTeleportScheduler, TeleportScheduler
+
+logger = getLogger(__name__)
 
 
 class TeleportPPO(PPO):
@@ -19,6 +23,9 @@ class TeleportPPO(PPO):
         curriculum_log_interval: Record teleport diagnostics every this many updates.
         convergence_threshold: If set, stop early once `tau == 0` and the policy shift
             `D_inf` falls below this threshold.
+        curriculum_freeze_patience: Warn once if `tau` never leaves its initial value
+            after this many updates, i.e. the budget `eps` is too small for the
+            `gamma/(1 - gamma)` scale of the realized policy shift.
         **kwargs: Keyword arguments forwarded to :class:`stable_baselines3.PPO`. The
             `rollout_buffer_class` defaults to :class:`TeleportRolloutBuffer`.
     """
@@ -29,6 +36,7 @@ class TeleportPPO(PPO):
         scheduler: TeleportScheduler,
         curriculum_log_interval: int = 1,
         convergence_threshold: float | None = None,
+        curriculum_freeze_patience: int = 10,
         **kwargs: object,
     ) -> None:
         kwargs.setdefault("rollout_buffer_class", TeleportRolloutBuffer)
@@ -36,6 +44,11 @@ class TeleportPPO(PPO):
         self._scheduler = scheduler
         self._curriculum_log_interval = curriculum_log_interval
         self._convergence_threshold = convergence_threshold
+        self._curriculum_freeze_patience = curriculum_freeze_patience
+        self._initial_tau: float | None = None
+        self._frozen_update_count = 0
+        self._curriculum_annealed = False
+        self._frozen_warning_emitted = False
 
     @property
     def tau(self) -> float:
@@ -78,6 +91,11 @@ class TeleportPPO(PPO):
         )
         callback.on_training_start(locals(), globals())
         assert self.env is not None
+
+        self._initial_tau = self.tau
+        self._frozen_update_count = 0
+        self._curriculum_annealed = False
+        self._frozen_warning_emitted = False
 
         while self.num_timesteps < total_timesteps:
             continue_training = self.collect_rollouts(
@@ -136,6 +154,7 @@ class TeleportPPO(PPO):
         tau_prime = self._scheduler.next_tau(tau, policy_shift=policy_shift)
         if tau_prime != tau:
             self._set_tau(tau_prime)
+        self._warn_if_curriculum_frozen(tau_prime, policy_shift)
 
         if self._curriculum_log_interval and iteration % self._curriculum_log_interval == 0:
             # Log the post-update rate now in effect, so the series anneals to 0 at
@@ -143,6 +162,54 @@ class TeleportPPO(PPO):
             # decrement above 0 and never record the terminal 0).
             self.logger.record("teleport/tau", tau_prime)
             self.logger.record("teleport/d_inf", policy_shift)
+
+    def _warn_if_curriculum_frozen(self, tau: float, policy_shift: float) -> None:
+        """Warn once if `tau` never leaves its initial value (a mis-scaled budget).
+
+        A dynamic curriculum legitimately pauses when a large policy shift consumes
+        the whole budget (`eps_tau <= 0`); that is expected mid-anneal. But if `tau`
+        has not moved off its initial value after `curriculum_freeze_patience`
+        updates, the budget `eps` is too small for the `gamma/(1 - gamma)` scale of
+        the realized policy shift (`eps_pi = gamma/(1 - gamma)*D_inf` exceeds `eps`
+        every update), so the teleport rate is silently frozen. The check disarms
+        itself the moment `tau` first decreases, so a genuine partial anneal never
+        triggers it.
+
+        Args:
+            tau: The teleport rate now in effect (post-update).
+            policy_shift: The update's policy shift `D_inf`.
+        """
+        if self._frozen_warning_emitted or self._curriculum_annealed:
+            return
+        if self._initial_tau is None or self._initial_tau <= 0.0:
+            return
+        if tau < self._initial_tau:
+            self._curriculum_annealed = True
+            return
+
+        self._frozen_update_count += 1
+        if self._frozen_update_count < self._curriculum_freeze_patience:
+            return
+
+        self._frozen_warning_emitted = True
+        eps_pi = (
+            self.gamma / (1.0 - self.gamma) * policy_shift if self.gamma < 1.0 else float("inf")
+        )
+        budget = (
+            f" > eps={self._scheduler.eps:g}"
+            if isinstance(self._scheduler, DynamicTeleportScheduler)
+            else ""
+        )
+        logger.warning(
+            "Teleport rate has not annealed after %d updates (tau still %.4g): the per-update "
+            "policy shift D_inf=%.3f consumes eps_pi=gamma/(1-gamma)*D_inf=%.2f%s, exhausting the "
+            "teleport budget every update. Increase curriculum.eps above eps_pi (or lower gamma).",
+            self._frozen_update_count,
+            self._initial_tau,
+            policy_shift,
+            eps_pi,
+            budget,
+        )
 
     def _has_converged(self, policy_shift: float) -> bool:
         """Whether to stop early: `tau` annealed to 0 and the policy has settled."""

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import functools
 import importlib.metadata
 import logging
@@ -9,13 +7,13 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Self, override
 
 import dotenv
+import mlflow
 import mlflow.data.polars_dataset
 import polars as pl
 
-import mlflow
 from utils.configs import MlflowLoggerConfig
 
 logger = logging.getLogger(__name__)
@@ -33,7 +31,7 @@ class BaseExperimentLogger(ABC):
         """Log all files under a local directory."""
 
     @abstractmethod
-    def __enter__(self) -> BaseExperimentLogger:
+    def __enter__(self) -> Self:
         """Enter the context manager for the experiment logger."""
 
     @abstractmethod
@@ -51,7 +49,7 @@ class MlflowLogger(BaseExperimentLogger):
         self._configure_tracking()
 
     @override
-    def __enter__(self) -> MlflowLogger:
+    def __enter__(self) -> Self:
         if self._run_name is None:
             self._run_name = self._generate_run_name()
         mlflow.start_run(run_name=self._run_name)

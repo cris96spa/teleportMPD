@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.vec_env import VecEnv
 
 from teleport_mdp.callbacks import MlflowCallback, ProgressCallback
 from teleport_mdp.environments.factory import make_vec_env
@@ -79,16 +80,18 @@ class Trainer:
         """Train and evaluate one seeded run."""
         set_random_seed(seed)
         train_env = make_vec_env(self._cfg, n_envs=self._cfg.n_envs, seed=seed)
+        eval_env = self._make_eval_env(seed)
         try:
             self._log_config(mlflow_logger)
             agent = build_agent(self._cfg, train_env, seed)
             callbacks = self._build_callbacks(
-                mlflow_logger, seed=seed, run_idx=run_idx, n_runs=n_runs
+                mlflow_logger, seed=seed, run_idx=run_idx, n_runs=n_runs, eval_env=eval_env
             )
             agent.learn(total_timesteps=self._cfg.total_timesteps, callback=callbacks)
-            mean_return, std_return = self._evaluate(agent, seed)
+            mean_return, std_return = self._evaluate(agent, eval_env)
         finally:
             train_env.close()
+            eval_env.close()
 
         mlflow_logger.log_metrics(
             {"eval/mean_return": mean_return, "eval/std_return": std_return},
@@ -97,33 +100,69 @@ class Trainer:
         return RunResult(seed, mean_return, std_return, DEFAULT_EVAL_EPISODES)
 
     def _build_callbacks(
-        self, mlflow_logger: MlflowLogger, *, seed: int, run_idx: int, n_runs: int
+        self,
+        mlflow_logger: MlflowLogger,
+        *,
+        seed: int,
+        run_idx: int,
+        n_runs: int,
+        eval_env: VecEnv,
     ) -> CallbackList:
-        """Compose MlflowCallback (always) + ProgressCallback (if enabled) + extras."""
+        """Compose MlflowCallback + ProgressCallback (if enabled) + EvalCallback (if set) + extras.
+
+        The `EvalCallback` is added only when `cfg.eval_freq` is set; it evaluates on
+        `eval_env` (the real MDP) and its `eval/*` records reach MLflow through the
+        `MlflowCallback` output format, so no extra logging wiring is needed.
+        """
         callbacks: list[BaseCallback] = [MlflowCallback(mlflow_logger)]
         if self._progress:
             desc = (
                 f"Run {run_idx}/{n_runs} (seed={seed})" if n_runs > 1 else f"Training (seed={seed})"
             )
             callbacks.append(ProgressCallback(desc=desc))
+        if self._cfg.eval_freq is not None:
+            callbacks.append(self._build_eval_callback(eval_env))
         callbacks.extend(self._extra_callbacks)
         return CallbackList(callbacks)
 
-    def _evaluate(self, model: BaseAlgorithm, seed: int) -> tuple[float, float]:
-        """Evaluate policy on the real MDP (τ forced to 0)."""
+    def _build_eval_callback(self, eval_env: VecEnv) -> EvalCallback:
+        """Periodic real-MDP evaluation streamed to MLflow via SB3's `EvalCallback`.
+
+        Its `eval/mean_reward` / `eval/mean_ep_length` records reach MLflow through the
+        `MlflowCallback` output format, so evaluating during training needs no logging
+        wiring beyond adding this callback.
+        """
+        assert self._cfg.eval_freq is not None
+        # A vectorized rollout advances all n_envs environments in lockstep: each
+        # collection step adds n_envs to the timestep count but invokes the callback
+        # exactly once (n_steps calls per rollout cover n_steps * n_envs timesteps).
+        # EvalCallback counts callback invocations, so a cadence expressed in timesteps
+        # (cfg.eval_freq) is divided by n_envs to recover the invocation cadence;
+        # without this, an experiment with n_envs=4 would evaluate 4x too often.
+        eval_freq = max(1, self._cfg.eval_freq // self._cfg.n_envs)
+        return EvalCallback(
+            eval_env,
+            eval_freq=eval_freq,
+            n_eval_episodes=DEFAULT_EVAL_EPISODES,
+            deterministic=True,
+            verbose=0,
+        )
+
+    def _make_eval_env(self, seed: int) -> VecEnv:
+        """Build the real-MDP evaluation env (teleport rate forced to 0)."""
         eval_cfg = self._cfg.model_copy(
             update={"teleport": self._cfg.teleport.model_copy(update={"tau_0": 0.0})}
         )
-        eval_env = make_vec_env(eval_cfg, n_envs=1, seed=seed + EVAL_SEED_OFFSET)
-        try:
-            mean_return, std_return = evaluate_policy(
-                model,
-                eval_env,
-                n_eval_episodes=DEFAULT_EVAL_EPISODES,
-                deterministic=True,
-            )
-        finally:
-            eval_env.close()
+        return make_vec_env(eval_cfg, n_envs=1, seed=seed + EVAL_SEED_OFFSET)
+
+    def _evaluate(self, model: BaseAlgorithm, eval_env: VecEnv) -> tuple[float, float]:
+        """Final policy evaluation on the real MDP eval env (teleport rate 0)."""
+        mean_return, std_return = evaluate_policy(
+            model,
+            eval_env,
+            n_eval_episodes=DEFAULT_EVAL_EPISODES,
+            deterministic=True,
+        )
         return float(mean_return), float(std_return)
 
     def _resolve_seeds(self) -> list[int]:

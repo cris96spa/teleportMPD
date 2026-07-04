@@ -1,0 +1,26 @@
+# Thesis FrozenLake 30x30 comparison — Static-Teleport Q-learning (the "S-TQ"/CurrQ line).
+# tau anneals linearly 0.2 -> 0 over the run's status steps (episodes // status_step).
+# Same tabular env as the vanilla Q baseline.
+name: thesis_frozen_lake_st_q_learning
+gamma: 0.99
+seed: 2999
+n_runs: 1
+
+algorithm:
+  kind: q_learning
+  alpha: 0.16
+  eps: 0.4
+  episodes: 1000000 # thesis ran ~4.9M
+  status_step: 500
+
+env:
+  size: 30
+  seed: 2999
+  is_slippery: false
+
+teleport:
+  tau_0: 0.2
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: static

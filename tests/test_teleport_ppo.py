@@ -106,3 +106,48 @@ def test_dynamic_curriculum_reduces_tau():
     assert taus, "teleport/tau was never logged"
     assert min(taus) < 0.5
     assert all(value >= 0.0 for value in taus)
+
+
+def test_eval_freq_streams_intermediate_evaluations():
+    """With eval_freq set, real-MDP evals are streamed mid-training, not just at the end."""
+    created, factory = _stub_factory()
+    cfg = ExperimentConfig(
+        name="exp-eval",
+        algorithm={"kind": "ppo", "n_steps": 16, "batch_size": 16, "n_epochs": 1},
+        env=EnvConfig(map_name="4x4", is_slippery=False),
+        gamma=0.99,
+        total_timesteps=64,  # four 16-step rollouts
+        eval_freq=16,  # evaluate every rollout -> evals before the final step
+        seed=0,
+    )
+    Trainer(cfg, mlflow_config=_mlflow_config(), logger_factory=factory, progress=False).run()
+
+    (logger,) = created
+    eval_steps = [step for metrics, step in logger.metrics if "eval/mean_reward" in metrics]
+    assert eval_steps, "eval/mean_reward was never streamed during training"
+    assert any(step < cfg.total_timesteps for step in eval_steps), "no mid-training evaluation"
+
+
+def test_no_eval_freq_runs_only_final_evaluation():
+    """Without eval_freq (the default), no intermediate eval/mean_reward is streamed."""
+    created, factory = _stub_factory()
+    cfg = _curriculum_config(curriculum={"kind": "static"})  # eval_freq defaults to None
+    Trainer(cfg, mlflow_config=_mlflow_config(), logger_factory=factory, progress=False).run()
+
+    (logger,) = created
+    assert not any("eval/mean_reward" in metrics for metrics, _ in logger.metrics)
+
+
+def test_dynamic_curriculum_frozen_budget_warns(caplog):
+    """A budget too small for the gamma/(1-gamma) scale freezes tau and warns once."""
+    _, factory = _stub_factory()
+    # eps far below gamma/(1-gamma)*D_inf, so eps_tau <= 0 every update and tau never moves.
+    cfg = _curriculum_config(
+        curriculum={"kind": "dynamic", "eps": 1e-9, "eps_tau_max": 1e-9},
+        total_timesteps=192,  # 12 updates at n_steps=16, past the default patience of 10
+    )
+    with caplog.at_level("WARNING", logger="teleport_mdp.agents.teleport_ppo"):
+        Trainer(cfg, mlflow_config=_mlflow_config(), logger_factory=factory, progress=False).run()
+
+    frozen_warnings = [r for r in caplog.records if "has not annealed" in r.getMessage()]
+    assert len(frozen_warnings) == 1, "expected exactly one frozen-curriculum warning"

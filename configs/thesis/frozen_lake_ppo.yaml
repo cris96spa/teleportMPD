@@ -1,0 +1,34 @@
+# Thesis FrozenLake 30x30 comparison — vanilla PPO baseline (the "PPO" line).
+# Shared canonical env: fixed 30x30 random map (map seed 2999 = thesis SEEDS[0]),
+# not slippery, sparse reward (n_bins=0), 10 seeds. tau_0=0 => plain MDP, no teleport.
+name: thesis_frozen_lake_ppo
+gamma: 0.99
+total_timesteps: 1000000
+eval_freq: 50000 # real-MDP eval every 50k steps -> ~20 eval/mean_reward points in MLflow
+seed: 2999
+n_runs: 1
+n_envs: 4
+
+algorithm:
+  kind: ppo
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gae_lambda: 0.95
+  learning_rate: 0.0003
+  clip_range: 0.2
+  ent_coef: 0.001 # thesis entropy_coef ~= 0.001012
+  vf_coef: 0.5
+
+env:
+  size: 30 # thesis nrows=30
+  seed: 2999 # fixes the random map (thesis map_seed = SEEDS[0]); held across runs
+  is_slippery: false
+  n_bins: 0 # sparse reward; thesis swept n_bins in {0, 1, 3, 7, 10, 15}
+
+teleport:
+  tau_0: 0.0
+  distribution: uniform_nonterminal # thesis xi = uniform over all states; non-terminal variant is safer here
+
+curriculum:
+  kind: none

@@ -7,6 +7,8 @@ from tqdm.auto import tqdm
 DISPLAY_KEYS: dict[str, tuple[str, str]] = {
     "rollout/ep_rew_mean": ("rew", ".4f"),
     "rollout/ep_len_mean": ("len", ".1f"),
+    "teleport/tau": ("tau", ".4f"),
+    "teleport/d_inf": ("d_inf", ".4f"),
     "time/fps": ("fps", ".0f"),
 }
 

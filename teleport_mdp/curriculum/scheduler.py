@@ -158,6 +158,11 @@ class DynamicTeleportScheduler(TeleportScheduler):
         self._eps = eps
         self._eps_tau_max = eps_tau_max
 
+    @property
+    def eps(self) -> float:
+        """The configured total per-update state-visit shift budget."""
+        return self._eps
+
     def next_tau(self, tau: float, *, policy_shift: float | None = None) -> float:
         """Lower `tau` by the budget left after the policy shift (Algorithm 3).
 
