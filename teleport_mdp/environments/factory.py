@@ -13,6 +13,7 @@ from teleport_mdp.environments.register import ENV_ID
 from teleport_mdp.environments.teleport_frozen_lake import TeleportFrozenLakeEnv
 from teleport_mdp.models import EnvConfig, ExperimentConfig, TeleportConfig
 from teleport_mdp.utils.frozen_lake import generate_random_map
+from teleport_mdp.wrappers.reward_shaping import ManhattanRewardShaping
 from teleport_mdp.wrappers.tmdp import TMDP
 
 if TYPE_CHECKING:
@@ -151,11 +152,12 @@ def make_vec_env(
 ) -> VecEnv:
     """Build an SB3 `VecEnv` of one-hot FrozenLake envs from an experiment config.
 
-    Each env is built as `TeleportFrozenLakeEnv -> [TMDP] -> TimeLimit ->
-    FlattenObservation` (the Discrete observation is flattened to a one-hot `Box`
-    so an SB3 `MlpPolicy` can consume it). The :class:`TMDP` layer is only added
-    when `teleport.tau_0 > 0`, so a vanilla (`tau_0 == 0`) baseline is a plain
-    FrozenLake.
+    Each env is built as `TeleportFrozenLakeEnv -> [TMDP] -> [ManhattanRewardShaping]
+    -> TimeLimit -> FlattenObservation` (the Discrete observation is flattened to a
+    one-hot `Box` so an SB3 `MlpPolicy` can consume it). The :class:`TMDP` layer is
+    only added when `teleport.tau_0 > 0`, so a vanilla (`tau_0 == 0`) baseline is a
+    plain FrozenLake; the :class:`ManhattanRewardShaping` layer is only added when
+    `env.n_bins > 0`, and sits outside `TMDP` so teleport steps keep their 0 reward.
 
     Args:
         cfg: The full experiment configuration.
@@ -177,6 +179,8 @@ def make_vec_env(
             env = wrap_tmdp(base, xi, cfg.teleport.tau_0)
         else:
             env = base
+        if cfg.env.n_bins > 0:
+            env = ManhattanRewardShaping(env, cfg.env.n_bins)
         if max_episode_steps is not None:
             env = TimeLimit(env, max_episode_steps=max_episode_steps)
         return FlattenObservation(env)
