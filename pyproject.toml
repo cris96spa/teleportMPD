@@ -33,7 +33,7 @@ dev = [
     "mkdocstrings[python]>=0.30.1,<0.31.0",
     "pre-commit>=4.3.0,<5.0.0",
     "python-semantic-release>=9.21,<10.0.0",
-    "ruff>=0.15.11,<0.16.0",
+    "ruff>=0.15.20,<0.16.0",
     "flake8>=7.0.0,<8.0.0",
     "pydoclint[flake8]>=0.7.3,<0.9.0",
     "Flake8-pyproject>=1.2.3,<2.0.0",
@@ -75,6 +75,10 @@ ignore = [
     "RUF067",  # non-empty-init-module: __init__ module should not contain any code — TODO: resolve and remove this ignore
     "DOC201",  # docstring-missing-returns: return value is not documented in docstring — FIXME: this line should be removed to improve documentation quality. NOTE: it may cause several linter errors across the codebase.
 ]
+
+[tool.ruff.lint.isort]
+known-third-party = ["dotenv", "mlflow", "polars"]
+known-first-party = ["teleport_mdp", "utils"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

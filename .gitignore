@@ -288,6 +288,7 @@ pip-selfcheck.json
 # Visual Studio Code configuration
 .vscode
 
-mlflow
+mlflow/
+mlruns/
 
 tests_report.xml
