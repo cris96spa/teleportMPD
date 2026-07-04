@@ -16,6 +16,9 @@ dependencies = [
     "gymnasium>=1.0.0",
     "numpy>=1.26",
     "overrides>=7.7.0",
+    "torch>=2.12.1",
+    "stable-baselines3>=2.7,<3.0",
+    "pygame>=2.6.1",
 ]
 
 [dependency-groups]
@@ -35,7 +38,6 @@ dev = [
     "pydoclint[flake8]>=0.7.3,<0.9.0",
     "Flake8-pyproject>=1.2.3,<2.0.0",
     "optuna>=4.4.0",
-    "pygame>=2.6.1",
     "polars>=1.31.0",
     "plotly>=6.2.0",
 ]
@@ -81,14 +83,14 @@ convention = "google"
 "__init__.py" = ["F401"]
 
 [tool.pyright]
-include = ["teleport-mdp", "tests", "utils"]
+include = ["teleport_mdp", "tests", "utils"]
 typeCheckingMode = "basic"
 reportFunctionMemberAccess = true
 reportPossiblyUnboundVariable = true
 reportIncompatibleMethodOverride = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["teleport-mdp"]
+packages = ["teleport_mdp"]
 
 [tool.hatch.metadata]
 allow-direct-references = true

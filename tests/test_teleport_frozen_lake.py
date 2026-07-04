@@ -117,6 +117,22 @@ def test_teleport(env: TeleportFrozenLakeEnv):
     assert not env.is_terminal(new_state), "teleport should not return a terminal state"
 
 
+def test_teleport_moves_the_agent(env: TeleportFrozenLakeEnv):
+    """Teleport must update the env's current state so stepping continues from there."""
+    num_states = env.observation_space.n  # pyright: ignore[reportAttributeAccessIssue]
+    teleport_prob_distribution = np.ones(num_states) / num_states
+    env.reset(seed=0)
+
+    new_state = env.teleport(teleport_prob_distribution)
+
+    # The internal state must follow the teleport, otherwise the next step would
+    # transition from the stale pre-teleport position.
+    assert env.s == new_state
+    expected_next = {t[1] for t in env.P[new_state][0]}
+    next_state, _, _, _, _ = env.step(0)
+    assert next_state in expected_next
+
+
 # endregion
 
 # region TMDP Wrapper Tests

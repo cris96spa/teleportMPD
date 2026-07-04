@@ -2,7 +2,7 @@ from contextlib import closing
 from io import StringIO
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, SupportsFloat
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, SupportsFloat
 
 import gymnasium as gym
 import numpy as np
@@ -11,21 +11,21 @@ from gymnasium.envs.toy_text.utils import categorical_sample
 from gymnasium.error import DependencyNotInstalled
 from overrides import override
 
+from teleport_mdp.constants import (
+    ACTION_NAMES,
+    DOWN,
+    LEFT,
+    MAPS,
+    RIGHT,
+    TERMINAL_TILES,
+    UP,
+)
 from teleport_mdp.utils.frozen_lake import generate_random_map
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from teleport_mdp.environments.teleport_env import TeleportEnv
-
-# Available actions
-LEFT = 0
-DOWN = 1
-RIGHT = 2
-UP = 3
-
-# Define the action type
-Action = Literal[0, 1, 2, 3]
 
 
 class Transition(NamedTuple):
@@ -35,22 +35,6 @@ class Transition(NamedTuple):
     next_state: int
     reward: float
     terminated: bool
-
-
-# Base maps
-MAPS = {
-    "4x4": ["SFFF", "FHFH", "FFFH", "HFFG"],
-    "8x8": [
-        "SFFFFFFF",
-        "FFFFFFFF",
-        "FFFHFFFF",
-        "FFFFFHFF",
-        "FFFHFFFF",
-        "FHHFFFHF",
-        "FHFFHFHF",
-        "FFFHFFFG",
-    ],
-}
 
 
 # region Frozen Lake
@@ -264,7 +248,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             col: the column number.
 
         Returns:
-            The state number corresponding to ``(row, col)``.
+            The state number corresponding to `(row, col)`.
         """
         return row * self.ncol + col
 
@@ -277,7 +261,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             action: the action to take.
 
         Returns:
-            The new ``(row, col)`` position after applying the action.
+            The new `(row, col)` position after applying the action.
         """
         if action == LEFT:
             col = max(col - 1, 0)
@@ -306,7 +290,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         new_row, new_col = self._inc(row, col, action)
         new_state = self._to_s(new_row, new_col)
         new_letter = self.desc[new_row, new_col]
-        terminated = bytes(new_letter) in b"GH"
+        terminated = bytes(new_letter) in TERMINAL_TILES
         reward = float(new_letter == b"G")
         return new_state, reward, terminated
 
@@ -333,7 +317,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
                 for a in range(n_actions):
                     transitions = transition_matrix[s][a]
                     letter = self.desc[row, col]
-                    if letter in b"GH":
+                    if letter in TERMINAL_TILES:
                         transitions.append(Transition(1.0, s, 0.0, True))
                     elif is_slippery:
                         for b in [(a - 1) % 4, a, (a + 1) % 4]:
@@ -359,7 +343,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             action: the action to take.
 
         Returns:
-            A tuple ``(s_prime, r, terminated, truncated, info)`` with the next
+            A tuple `(s_prime, r, terminated, truncated, info)` with the next
             state, reward, termination flag, truncation flag, and an info
             dictionary holding the transition probability.
         """
@@ -387,7 +371,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             options: additional options to pass to the environment.
 
         Returns:
-            A tuple ``(state, info)`` with the initial state and an info
+            A tuple `(state, info)` with the initial state and an info
             dictionary holding the transition probability.
         """
         super().reset(seed=seed, options=options)
@@ -428,7 +412,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
             state: the state to check.
 
         Returns:
-            ``True`` if the state is terminal, ``False`` otherwise.
+            `True` if the state is terminal, `False` otherwise.
 
         Raises:
             ValueError: if the state is outside the valid state range.
@@ -442,7 +426,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
                 " ]",
             )
         row, col = state // self.ncol, state % self.ncol
-        return bytes(self.desc[row, col]) in b"GH"
+        return bytes(self.desc[row, col]) in TERMINAL_TILES
 
     @override(check_signature=False)
     def teleport(self, teleport_distribution: np.ndarray[Any, np.dtype[Any]]) -> int:
@@ -461,6 +445,10 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         while True:
             s_prime = int(categorical_sample(teleport_distribution, self.np_random))
             if not self.is_terminal(s_prime):
+                # Move the agent: the env must continue from the teleported state,
+                # otherwise the next step() transitions from the stale `self.s`.
+                self.s = s_prime
+                self.lastaction = None
                 return s_prime
 
     # endregion
@@ -589,7 +577,7 @@ class TeleportFrozenLakeEnv(TeleportEnv):
         desc = [[c.decode("utf-8") for c in line] for line in desc]
         desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
         if self.lastaction is not None:
-            outfile.write(f"  ({['Left', 'Down', 'Right', 'Up'][self.lastaction]})\n")
+            outfile.write(f"  ({ACTION_NAMES[self.lastaction]})\n")
         else:
             outfile.write("\n")
         outfile.write("\n".join("".join(line) for line in desc) + "\n")

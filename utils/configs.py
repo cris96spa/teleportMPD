@@ -77,15 +77,15 @@ class YamlBaseModel(BaseModel):
         """Load and validate the config from a YAML file.
 
         Args:
-            path: Path to the YAML file. When ``None``, ``DEFAULT_CONFIG_PATH``
+            path: Path to the YAML file. When `None`, `DEFAULT_CONFIG_PATH`
                 is used.
 
         Returns:
             The validated config instance.
 
         Raises:
-            ValueError: If no ``path`` is given and the class defines no
-                ``DEFAULT_CONFIG_PATH``.
+            ValueError: If no `path` is given and the class defines no
+                `DEFAULT_CONFIG_PATH`.
         """
         if path is None:
             if cls.DEFAULT_CONFIG_PATH is None:
@@ -123,8 +123,8 @@ class GlobalConfig(YamlBaseSettings):
 class BaseExperimentLoggerConfig(YamlBaseModel):
     """Base configuration for experiment logger implementations.
 
-    Uses ``extra="allow"`` so that concrete-logger fields (e.g. MLflow's
-    ``tracking_uri``) are preserved when this base type is used as the
+    Uses `extra="allow"` so that concrete-logger fields (e.g. MLflow's
+    `tracking_uri`) are preserved when this base type is used as the
     field type in command configs.  The command layer can then pass the
     raw data to the concrete config class for full validation.
     """

@@ -1,0 +1,36 @@
+# Dynamic-Teleport (D-T) PPO curriculum on FrozenLake.
+# tau is reduced based on the policy shift each update (thesis Algorithm 3):
+# eps is the total state-visit shift budget, eps_tau_max caps a single model update.
+name: frozen_lake_dt_ppo
+gamma: 0.99
+total_timesteps: 100000
+seed: 42
+n_runs: 1
+
+algorithm:
+  kind: ppo
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gae_lambda: 0.95
+  learning_rate: 0.0003
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+
+env:
+  map_name: "8x8"
+  is_slippery: false
+  n_bins: 0
+
+teleport:
+  tau_0: 0.9
+  distribution: uniform_nonterminal
+
+# eps is the total per-update state-visit shift budget; with gamma=0.99 the policy
+# shift consumes gamma/(1-gamma)=99x its D_inf, so eps must be generous for tau to
+# anneal as the policy stabilises. eps_tau_max caps a single teleport-rate step.
+curriculum:
+  kind: dynamic
+  eps: 1.0
+  eps_tau_max: 0.05

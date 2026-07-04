@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any, override
 
 import dotenv
-import mlflow
 import mlflow.data.polars_dataset
 import polars as pl
 
+import mlflow
 from utils.configs import MlflowLoggerConfig
 
 logger = logging.getLogger(__name__)
