@@ -177,4 +177,37 @@ def test_make_vec_env_wraps_tmdp_when_teleporting():
         vec_env.close()
 
 
+def _first_step_reward(cfg: ExperimentConfig) -> float:
+    """Reward of a single deterministic DOWN step from the start state."""
+    vec_env = make_vec_env(cfg, n_envs=1, max_episode_steps=50)
+    try:
+        vec_env.reset()
+        _, rewards, _, _ = vec_env.step(np.array([1]))  # DOWN, away from the goal
+        return float(rewards[0])
+    finally:
+        vec_env.close()
+
+
+def test_make_vec_env_applies_shaping_when_n_bins_positive():
+    """`env.n_bins > 0` shapes the reward, so a step away from the goal is negative."""
+    cfg = ExperimentConfig(
+        name="factory-shaped",
+        algorithm={"kind": "ppo"},
+        env=EnvConfig(map_name="4x4", is_slippery=False, n_bins=3),
+        seed=0,
+    )
+    assert _first_step_reward(cfg) < 0.0
+
+
+def test_make_vec_env_is_sparse_when_n_bins_zero():
+    """`env.n_bins == 0` leaves the env unshaped, so a non-goal step yields 0."""
+    cfg = ExperimentConfig(
+        name="factory-sparse",
+        algorithm={"kind": "ppo"},
+        env=EnvConfig(map_name="4x4", is_slippery=False, n_bins=0),
+        seed=0,
+    )
+    assert _first_step_reward(cfg) == pytest.approx(0.0)
+
+
 # endregion
