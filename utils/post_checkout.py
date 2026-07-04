@@ -1,5 +1,3 @@
-"""Post-checkout hook to check if pyproject.toml changed, and display a warning if so."""
-
 import os
 import subprocess
 import sys
@@ -11,7 +9,6 @@ def main() -> int:
     Returns:
         Exit code: 0 on success, 1 on failure.
     """
-    # Get git refs from env variables
     from_ref = os.getenv("PRE_COMMIT_FROM_REF")
     to_ref = os.getenv("PRE_COMMIT_TO_REF")
     checkout_type = os.getenv("PRE_COMMIT_CHECKOUT_TYPE")
@@ -30,7 +27,6 @@ def main() -> int:
     if checkout_type != "1":
         return 0
 
-    # Check if pyproject.toml changed
     if is_file_changed("pyproject.toml", from_ref, to_ref):
         print_warning()
 

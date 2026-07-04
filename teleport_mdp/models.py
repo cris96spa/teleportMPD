@@ -350,7 +350,7 @@ class PPOConfig(BaseModel):
 
 
 class QLearningConfig(BaseModel):
-    """Tabular batch Q-learning hyperparameters (excluding `gamma`)."""
+    """Tabular Q-learning hyperparameters (excluding `gamma`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -360,7 +360,6 @@ class QLearningConfig(BaseModel):
     alpha: float = Field(default=1.0, gt=0.0, description="Initial learning rate.")
     eps: float = Field(default=0.0, ge=0.0, description="Initial epsilon-greedy exploration.")
     episodes: int = Field(default=5000, gt=0, description="Number of training episodes.")
-    batch_size: int = Field(default=1, gt=0, description="Trajectories per update batch.")
     status_step: int = Field(default=5000, gt=0, description="Interval between Q snapshots.")
 
 

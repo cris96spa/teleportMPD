@@ -1,5 +1,3 @@
-"""Tests for Teleport Model Policy Iteration: bound validity, monotonicity, tau annealing."""
-
 from itertools import pairwise
 
 import numpy as np

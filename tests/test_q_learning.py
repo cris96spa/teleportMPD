@@ -1,5 +1,3 @@
-"""Tests for tabular Q-learning: convergence, teleport truncation, and curriculum."""
-
 import numpy as np
 import pytest
 from gymnasium import spaces

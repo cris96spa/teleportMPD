@@ -1,5 +1,3 @@
-"""Tests for the tabular model functions on small, hand-checkable MDPs."""
-
 import numpy as np
 import pytest
 

@@ -45,7 +45,7 @@ test: # launch the tests
 pre-commit: # run pre-commit hooks
 	uv run pre-commit run --all-files
 
-mlflow-up: ## Start the MLflow tracking server via Docker Compose (UI at http://localhost:5001)
+mlflow-up: ## Start the MLflow tracking server via Docker Compose
 	docker compose -f mlflow_compose.yaml up -d
 
 mlflow-down: ## Stop the MLflow tracking server

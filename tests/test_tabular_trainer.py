@@ -1,5 +1,3 @@
-"""Tests for the tabular trainer: config dispatch, exact evaluation, MLflow logging."""
-
 import pytest
 
 from teleport_mdp.models import (

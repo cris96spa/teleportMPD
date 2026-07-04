@@ -1,13 +1,5 @@
-"""Orchestrates tabular (Q-learning / TMPI) runs: env build, training, exact eval, MLflow.
-
-The SB3 :class:`teleport_mdp.trainer.Trainer` cannot run the tabular algorithms
-(they are numpy learners, not `BaseAlgorithm` with `learn`/`total_timesteps`), so
-this parallel trainer drives them. Both algorithms are evaluated the same exact,
-model-based way: the greedy/target policy's performance `J = mu . V` on the real
-MDP (teleport rate forced to 0).
-"""
-
-from typing import Any, Callable, NamedTuple
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from teleport_mdp.curriculum.scheduler import (
     DynamicTeleportScheduler,
@@ -41,6 +33,9 @@ class TabularRunResult(NamedTuple):
 
 class TabularTrainer:
     """Runs a tabular experiment (Q-learning or TMPI) across seeds with MLflow logging.
+
+    Every run is evaluated the same exact, model-based way: the final policy's performance
+    `J = mu . V` on the real MDP (teleport rate forced to 0).
 
     Args:
         cfg: The experiment configuration; its `algorithm.kind` selects the learner.

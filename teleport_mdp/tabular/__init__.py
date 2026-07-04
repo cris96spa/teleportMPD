@@ -1,5 +1,3 @@
-"""Tabular, model-based teleport-MDP quantities (numpy, no torch)."""
-
 from teleport_mdp.tabular.bound import (
     BoundMetrics,
     candidate_pairs,
