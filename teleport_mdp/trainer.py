@@ -1,9 +1,10 @@
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.callbacks import CallbackList
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.utils import set_random_seed
 
@@ -36,6 +37,9 @@ class Trainer:
         mlflow_config: MLflow logger config; loaded from default YAML when omitted.
         logger_factory: Builds the context-managed MlflowLogger per run.
         progress: Whether to show a tqdm progress bar during training.
+        extra_callbacks: SB3 callbacks appended to every seeded run's callback list
+            (e.g. an Optuna pruning hook). The same instances are reused across
+            seeds, so any per-run state they hold must reset in `_on_training_start`.
     """
 
     def __init__(
@@ -45,11 +49,13 @@ class Trainer:
         logger_factory: LoggerFactory = MlflowLogger,
         *,
         progress: bool = True,
+        extra_callbacks: Sequence[BaseCallback] = (),
     ) -> None:
         self._cfg = cfg
         self._mlflow_config = mlflow_config or MlflowLoggerConfig.from_yaml()
         self._logger_factory = logger_factory
         self._progress = progress
+        self._extra_callbacks = list(extra_callbacks)
 
     def run(self) -> list[RunResult]:
         """Execute all seeded runs and return their evaluation results."""
@@ -93,13 +99,14 @@ class Trainer:
     def _build_callbacks(
         self, mlflow_logger: MlflowLogger, *, seed: int, run_idx: int, n_runs: int
     ) -> CallbackList:
-        """Compose MlflowCallback (always) + ProgressCallback (if enabled)."""
-        callbacks = [MlflowCallback(mlflow_logger)]
+        """Compose MlflowCallback (always) + ProgressCallback (if enabled) + extras."""
+        callbacks: list[BaseCallback] = [MlflowCallback(mlflow_logger)]
         if self._progress:
             desc = (
                 f"Run {run_idx}/{n_runs} (seed={seed})" if n_runs > 1 else f"Training (seed={seed})"
             )
             callbacks.append(ProgressCallback(desc=desc))
+        callbacks.extend(self._extra_callbacks)
         return CallbackList(callbacks)
 
     def _evaluate(self, model: BaseAlgorithm, seed: int) -> tuple[float, float]:

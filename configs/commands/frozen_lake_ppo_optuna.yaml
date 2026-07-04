@@ -1,0 +1,60 @@
+# Optuna HPO study over vanilla PPO on FrozenLake (task 14).
+# Run: uv run python -m teleport_mdp run_optuna --config configs/commands/frozen_lake_ppo_optuna.yaml
+# Trial count, direction, and the search space all live in the `optuna` block.
+# Each `param_space` entry's `name` is a dotted path into the config below.
+name: frozen_lake_ppo_hpo
+gamma: 0.99
+total_timesteps: 100000
+seed: 42
+n_runs: 1
+
+algorithm:
+  kind: ppo
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gae_lambda: 0.95
+  learning_rate: 0.0003
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+
+env:
+  map_name: "4x4"
+  is_slippery: false
+  n_bins: 3
+
+teleport:
+  tau_0: 0.0
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: none
+
+optuna:
+  enabled: true
+  n_trials: 20
+  direction: maximize
+  study_name: frozen_lake_ppo_hpo
+  param_space:
+    - name: algorithm.learning_rate
+      kind: float
+      low: 1.0e-5
+      high: 1.0e-2
+      log: true
+    - name: algorithm.gae_lambda
+      kind: float
+      low: 0.8
+      high: 1.0
+    - name: algorithm.clip_range
+      kind: float
+      low: 0.1
+      high: 0.4
+    - name: algorithm.ent_coef
+      kind: float
+      low: 1.0e-8
+      high: 1.0e-1
+      log: true
+    - name: algorithm.n_steps
+      kind: categorical
+      choices: [512, 1024, 2048]
