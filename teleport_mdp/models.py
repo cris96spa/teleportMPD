@@ -407,6 +407,12 @@ class ExperimentConfig(YamlBaseModel):
         "teleport schedule, to avoid drift between them.",
     )
     total_timesteps: int = Field(default=100_000, gt=0, description="Total training timesteps.")
+    eval_freq: int | None = Field(
+        default=None,
+        gt=0,
+        description="Timesteps between intermediate evaluations on the real MDP (teleport rate "
+        "0) during training; None runs only the final evaluation. SB3 PPO track only.",
+    )
     seed: int | None = Field(default=None, description="Base RNG seed for reproducibility.")
     n_runs: int = Field(default=1, gt=0, description="Number of seeded repeats for CI bands.")
     n_envs: int = Field(

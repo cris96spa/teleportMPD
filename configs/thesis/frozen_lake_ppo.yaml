@@ -4,6 +4,7 @@
 name: thesis_frozen_lake_ppo
 gamma: 0.99
 total_timesteps: 1000000
+eval_freq: 50000 # real-MDP eval every 50k steps -> ~20 eval/mean_reward points in MLflow
 seed: 2999
 n_runs: 1
 n_envs: 4

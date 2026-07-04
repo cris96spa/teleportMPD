@@ -1,0 +1,40 @@
+# Thesis FrozenLake 30x30 comparison — Dynamic-Teleport PPO (the "D-TPPO"/CurrPMPO line).
+# tau is lowered by the budget left after the policy shift each update (thesis Algorithm 3):
+# eps_tau = eps - gamma/(1-gamma)*D_inf. At gamma=0.99 the gamma/(1-gamma)=99 factor sets the
+# scale: a realistic per-update D_inf ~0.4 consumes eps_pi ~40, so eps must be O(10-100), not
+# O(1), or tau never decreases at all. eps=50 opens the anneal on updates with policy shift
+# D_inf < eps*(1-gamma)/gamma ~= 0.5 and pauses it above that, so tau falls during calm phases
+# and holds while the policy churns. The legacy eps_shift/max_eps_model (1e-3/5e-4) do not transfer.
+name: thesis_frozen_lake_dt_ppo
+gamma: 0.99
+total_timesteps: 1000000
+eval_freq: 50000 # real-MDP eval every 50k steps -> ~20 eval/mean_reward points in MLflow
+seed: 2999
+n_runs: 10
+n_envs: 4
+
+algorithm:
+  kind: ppo
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gae_lambda: 0.95
+  learning_rate: 0.0003
+  clip_range: 0.2
+  ent_coef: 0.001
+  vf_coef: 0.5
+
+env:
+  size: 30
+  seed: 2999
+  is_slippery: false
+  n_bins: 0
+
+teleport:
+  tau_0: 0.2
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: dynamic
+  eps: 50.0 # total state-visit shift budget; scaled to gamma/(1-gamma)=99 (see header)
+  eps_tau_max: 0.5 # cap on a single teleport-rate step

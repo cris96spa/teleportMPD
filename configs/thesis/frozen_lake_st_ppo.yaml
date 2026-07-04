@@ -1,13 +1,13 @@
-# Static-Teleport (S-T) PPO curriculum on FrozenLake.
-# tau decreases linearly to 0 over the run (thesis Algorithm 2 / Theorem 5.2);
-# the per-update budget eps_tau is derived from total_timesteps / n_steps at runtime.
-name: frozen_lake_st_ppo
+# Thesis FrozenLake 30x30 comparison — Static-Teleport PPO (the "S-TPPO"/CurrPPO line).
+# tau anneals linearly 0.2 -> 0 over the run (thesis Algorithm 2). Same env as the PPO
+# baseline so the two are directly comparable.
+name: thesis_frozen_lake_st_ppo
 gamma: 0.99
 total_timesteps: 1000000
 eval_freq: 50000 # real-MDP eval every 50k steps -> ~20 eval/mean_reward points in MLflow
-seed: 42
+seed: 2999
 n_runs: 1
-n_envs: 2
+n_envs: 4
 
 algorithm:
   kind: ppo
@@ -17,18 +17,17 @@ algorithm:
   gae_lambda: 0.95
   learning_rate: 0.0003
   clip_range: 0.2
-  ent_coef: 0.01
+  ent_coef: 0.001
   vf_coef: 0.5
 
 env:
-  # map_name: "8x8"
+  size: 30
+  seed: 2999
   is_slippery: false
   n_bins: 0
-  size: 32
-  # render_mode: "human"
 
 teleport:
-  tau_0: .45
+  tau_0: 0.2 # thesis initial tau for the 30x30 comparison
   distribution: uniform_nonterminal
 
 curriculum:

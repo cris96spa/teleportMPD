@@ -1,10 +1,12 @@
 # Teleport Model Policy Iteration (TMPI) on FrozenLake.
-# TMPI is exact and model-based; it schedules its own teleport rate, so the
-# curriculum must be 'none'. A moderate gamma and a sharp (low-temperature) target
-# let the conservative Teleport Bound anneal tau to 0 (the (1-gamma)^2 penalty makes
-# tau-reduction steps microscopic at gamma near 1).
+# TMPI is exact and model-based; it schedules its own teleport rate via the Teleport
+# Bound, so the curriculum must be 'none'. gamma is the standard 0.99. The exact bound
+# anneals tau conservatively — it improves the policy at the current tau and only lowers
+# tau once that stops paying off — so on a small map like this 8x8 tau can hold at tau_0
+# while the policy converges; it anneals on larger maps. Lowering gamma neither helps it
+# anneal nor improves J.
 name: frozen_lake_tmpi
-gamma: 0.9
+gamma: 0.99
 seed: 42
 n_runs: 1
 

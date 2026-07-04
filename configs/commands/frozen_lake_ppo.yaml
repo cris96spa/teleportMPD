@@ -2,6 +2,7 @@
 name: frozen_lake_ppo_vanilla
 gamma: 0.99
 total_timesteps: 200000
+eval_freq: 10000 # real-MDP eval every 10k steps -> ~20 eval/mean_reward points in MLflow
 seed: 42
 n_runs: 1
 

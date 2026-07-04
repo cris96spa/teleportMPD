@@ -1,0 +1,30 @@
+# Thesis FrozenLake 30x30 comparison — Teleport Model Policy Iteration (the "TMPI"/CurrMPI line).
+# TMPI is exact and model-based; it schedules its own teleport rate via the Teleport Bound, so
+# curriculum=none and a single deterministic run suffices. gamma is the thesis 0.99. The exact
+# bound anneals tau conservatively: it improves the policy at the current tau and only lowers tau
+# once that stops paying off, so tau annealing is map-dependent — it can hold at tau_0 while the
+# policy converges on small/easy maps and anneals on larger ones like this 30x30 (the thesis's
+# own tau curriculum came from its *sampled* CurrMPI, which anneals more readily). Lowering gamma
+# does NOT help it anneal and only worsens J. Exact PI on 900 states is heavy; drop `size` to smoke-test.
+name: thesis_frozen_lake_tmpi
+gamma: 0.99
+seed: 2999
+n_runs: 1
+
+algorithm:
+  kind: tmpi
+  threshold: 1.0e-9
+  max_iterations: 300000
+  temperature: 0.1 # sharpens the softmax target policy
+
+env:
+  size: 30
+  seed: 2999
+  is_slippery: false
+
+teleport:
+  tau_0: 0.2 # thesis initial tau for the 30x30 comparison
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: none

@@ -1,0 +1,26 @@
+# Thesis FrozenLake 30x30 comparison — vanilla tabular Q-learning (the "Q" line).
+# Tabular track (run_tabular): numpy-only, unshaped, evaluates exact J at tau=0.
+# alpha/eps carry over from the thesis; episodes is scaled down from the thesis ~6.9M.
+name: thesis_frozen_lake_q_learning
+gamma: 0.99
+seed: 2999
+n_runs: 1
+
+algorithm:
+  kind: q_learning
+  alpha: 0.16 # thesis model_lr ~= 0.1587
+  eps: 0.4 # thesis exp_rate
+  episodes: 1000000 # thesis ran ~6.9M; sparse 30x30 needs a large budget without teleport
+  status_step: 500 # thesis checkpoint_step
+
+env:
+  size: 30
+  seed: 2999
+  is_slippery: false
+
+teleport:
+  tau_0: 0.0
+  distribution: uniform_nonterminal
+
+curriculum:
+  kind: none
