@@ -95,5 +95,6 @@ extra_css:
 
 nav:
   - "Home": index.md
+  - "Running Experiments": running-experiments.md
   - "Updating from the Template": updating-from-template.md
   - "API Reference": api/

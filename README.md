@@ -118,15 +118,6 @@ Check formatting without modifying files:
 make format-check
 ```
 
-### Executing
-
-The code is a simple hello world example, which just requires a number as input. It will output the sum of the provided number with a random number.
-You can run the code with:
-
-```bash
-uv run python main.py --number 5
-```
-
 ### Docker
 
 The template includes a multi-stage Dockerfile, which produces an image with the code and the dependencies installed. You can build the image with:
